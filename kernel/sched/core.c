@@ -1462,9 +1462,16 @@ unsigned long wait_task_inactive(struct task_struct *p, long match_state)
 			{
 				extern unsigned long forge_tick_name8(void);
 				extern unsigned long forge_gicd_isenabler(int word);
+				extern unsigned long forge_cpuxgpt_ctl(void);
+				unsigned long frq, pct2;
 
-				forge_kmark_ptr(63, forge_tick_name8()); /* WHICH tick device */
-				forge_kmark_ptr(64, forge_gicd_isenabler(5)); /* SPI184 bit24 */
+				forge_kmark_ptr(63, forge_tick_name8());
+				forge_kmark_ptr(64, forge_gicd_isenabler(5));
+				forge_kmark_ptr(67, forge_cpuxgpt_ctl()); /* CTL in wait loop */
+				asm volatile("mrs %0, cntfrq_el0" : "=r"(frq));
+				forge_kmark_ptr(68, frq);		/* CNTFRQ */
+				asm volatile("mrs %0, cntpct_el0" : "=r"(pct2));
+				forge_kmark_ptr(69, pct2);		/* CNTPCT 2nd read */
 			}
 		}
 		/*
