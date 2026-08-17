@@ -795,15 +795,22 @@ static int __init ram_console_early_init(void)
 		/* FORGE m5c: the 2017 stock LK provides no (or an older)
 		 * chosen/ram_console contract; the Q0 code BUG()'d here,
 		 * which killed the boot inside console_init with no output.
-		 * Fall back to the layout the hardware-proven 3.18 kernel
-		 * uses on this device (and which the stock DTB reserves):
-		 * ram_console 0x43f00000/0x10000, pstore 0x43f10000/0xe0000
-		 * (console 0x10000, pmsg 0x10000). */
-		pr_notice("ram_console: no LK memory_info, using m5c fixed layout\n");
-		start = 0x43f00000;
+		 *
+		 * Bring-up DEBUG layout: the stock windows (ram_console
+		 * 0x43f00000, pstore 0x43f10000 - what the proven 3.18 uses)
+		 * are re-initialised by the RECOVERY kernel before the log
+		 * can be dd'd, destroying the dead kernel's text. Instead
+		 * use a window control-validated to survive reset + LK +
+		 * recovery boot (probe write-reboot-read, 2026-08-17):
+		 * 0x5f000000. Read from recovery:
+		 *   dd if=/dev/mem bs=1 skip=1593835520 count=65536 -> strings
+		 * Once the kernel reaches adb, flip back to the stock
+		 * windows so /proc/last_kmsg works normally. */
+		pr_notice("ram_console: no LK memory_info, using m5c debug layout @0x5f000000\n");
+		start = 0x5f000000;
 		size = 0x10000;
 		bufp = remap_lowmem(start, size);
-		pstore_set_addr_size(0x43f10000, 0xe0000, 0x10000, 0x10000);
+		pstore_set_addr_size(0x5f010000, 0xe0000, 0x10000, 0x10000);
 	}
 	/* unsigned long conversion:
 	 * make size equals to pointer size
