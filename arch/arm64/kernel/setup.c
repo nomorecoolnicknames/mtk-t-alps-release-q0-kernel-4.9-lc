@@ -231,6 +231,36 @@ static void __init request_standard_resources(void)
 
 u64 __cpu_logical_map[NR_CPUS] = { [0 ... NR_CPUS-1] = INVALID_HWID };
 
+/*
+ * FORGE C-level boot markers (m5c 4.9 bring-up, no console).
+ * The asm markers in head.S run with the MMU off and physical stores; once
+ * the MMU is on they cannot reach the far scratch pages. These stamp the
+ * same two validated scratch addresses (0x7f000000, 0xb0000000) from C via
+ * early_ioremap (available from early_ioremap_init() onward), so the death
+ * point can be bisected across setup_arch. Same on-DRAM layout as head.S:
+ * "FORGE49\0" at +0, an 8-byte slot per milestone at +8+8*ms (bytes
+ * ms,'A','R','A'), so every milestone reached stays visible.
+ * Milestones (C): 5=setup_arch/ioremap live, 6=fdt scanned,
+ * 7=memblock done, 8=paging_init done, 9=setup_arch end.
+ */
+static void __init forge_cmark(int ms)
+{
+	static const phys_addr_t bases[2] = { 0x7f000000, 0xb0000000 };
+	int i;
+
+	for (i = 0; i < 2; i++) {
+		void __iomem *p = early_ioremap(bases[i], 128);
+
+		if (!p)
+			continue;
+		writel(0x47524f46, p + 0);		/* "FORG" */
+		writel(0x00393445, p + 4);		/* "E49\0" */
+		writeq(((u64)0x4152 << 16) | (0x4100 | (ms & 0xff)),
+		       p + 8 + 8 * ms);			/* slot: ms,'A','R','A' */
+		early_iounmap(p, 128);
+	}
+}
+
 void __init setup_arch(char **cmdline_p)
 {
 	pr_info("Boot CPU: AArch64 Processor [%08x]\n", read_cpuid_id());
@@ -245,8 +275,10 @@ void __init setup_arch(char **cmdline_p)
 
 	early_fixmap_init();
 	early_ioremap_init();
+	forge_cmark(5);				/* FORGE: setup_arch, early_ioremap live */
 
 	setup_machine_fdt(__fdt_pointer);
+	forge_cmark(6);				/* FORGE: FDT scanned */
 
 	parse_early_param();
 
@@ -265,8 +297,10 @@ void __init setup_arch(char **cmdline_p)
 	xen_early_init();
 	efi_init();
 	arm64_memblock_init();
+	forge_cmark(7);				/* FORGE: memblock done */
 
 	paging_init();
+	forge_cmark(8);				/* FORGE: paging_init done (linear map up) */
 
 	acpi_table_upgrade();
 
@@ -315,6 +349,7 @@ void __init setup_arch(char **cmdline_p)
 			"This indicates a broken bootloader or old kernel\n",
 			boot_args[1], boot_args[2], boot_args[3]);
 	}
+	forge_cmark(9);				/* FORGE: setup_arch end */
 }
 
 static int __init topology_init(void)
