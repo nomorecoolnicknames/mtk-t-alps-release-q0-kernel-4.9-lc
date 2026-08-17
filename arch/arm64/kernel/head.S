@@ -45,33 +45,47 @@
 #define __PHYS_OFFSET	(KERNEL_START - TEXT_OFFSET)
 
 /*
- * FORGE early boot markers (m5c 4.9 bring-up, no UART).
- * Stamp a magic + milestone to a fixed physical DRAM address that both the
- * bootloader (LK) and the stock TWRP kernel preserve: the minirdump reserved
- * window (stock DTB: reg=<0x43ff0000 0x10000>, mapped, reserved so it is
- * never used as general RAM, only written by the stock minidump driver on a
- * crash). We stamp at +0x800 to dodge any minidump header at the start.
- * These run with MMU+D-cache OFF (reset state), so the store reaches DRAM
- * directly; a dsb makes it visible. Read after a bootloop from TWRP:
- *   dd if=/dev/mem bs=1048576 skip=0 count=0  # (use iflag=skip_bytes below)
- *   dd if=/dev/mem of=/tmp/fmark.bin bs=1 skip=$((0x43ff0800)) count=32
- * Layout at 0x43ff0800: "FORG" "E49\0" <u32 milestone> (last writer wins).
- * Milestones: 1=stext entry, 4=asm setup done (about to enable MMU).
- * No marker at all => died before/at kernel entry (decompress/bootloader).
- * Uses only x14/x15 (dead at every call site; x0..x3 boot args untouched).
+ * FORGE early boot markers (m5c 4.9 bring-up, no UART), revision 2.
+ *
+ * Rev 1 stamped the minirdump window (0x43ff0800); a control experiment
+ * (write from a running kernel, reboot, read back via /dev/mem from the
+ * recovery that now runs our 3.18 kernel) proved that address does NOT
+ * survive a reboot on this device (comes back zeros; the window also
+ * contains live Thumb code, so LK/TEE reuse it). Rev 2 therefore stamps
+ * TWO candidate free-DRAM addresses, both to be control-validated the
+ * same way before trusting a negative:
+ *   A: 0x44800000 - past the ramdisk end (~0x44190000), same choice that
+ *      works as the m681 FLOG ring; low memory, memblock allocs go
+ *      top-down so a booting recovery kernel should not touch it.
+ *   B: 0x4e100000 - past the tags/DTB area (0x4e000000 + <1 MiB).
+ * Layout at each base: +0 "FORG", +4 "E49\0", then one 8-byte slot per
+ * milestone at +8+8*ms holding 0x004B52414D000000|ms ("...MARK"+ms), so
+ * every milestone reached stays visible (not just the last one).
+ * Milestones: 1=stext entry, 2=el2_setup done, 3=page tables built,
+ * 4=cpu_setup done (about to enable the MMU).
+ * Runs with MMU+D-cache OFF, so stores reach DRAM directly; dsb orders.
+ * Only x14/x15 are used (dead at every call site; x0..x3 preserved).
+ * Read from recovery (busybox):
+ *   dd if=/dev/mem of=/tmp/fA.bin bs=1 skip=1149239296 count=48  # 0x44800000
+ *   dd if=/dev/mem of=/tmp/fB.bin bs=1 skip=1309671424 count=48  # 0x4e100000
  */
-#define FORGE_MARK_PA	0x43ff0800
-	.macro	forge_mark, ms
-	movz	x14, #0x43ff, lsl #16
-	movk	x14, #0x0800			// x14 = FORGE_MARK_PA
+	.macro	forge_mark_one, base_hi16, ms
+	movz	x14, #\base_hi16, lsl #16	// x14 = candidate base PA
 	movz	x15, #0x4f46			// "FORG" (F,O,R,G LE)
 	movk	x15, #0x4752, lsl #16
 	str	w15, [x14]
 	movz	x15, #0x3445			// "E49\0" (E,4,9,NUL LE)
 	movk	x15, #0x0039, lsl #16
 	str	w15, [x14, #4]
-	mov	w15, #\ms
-	str	w15, [x14, #8]
+	movz	x15, #0x4b00 + \ms		// low16: 'K'<<8 | ms
+	movk	x15, #0x4152, lsl #16		// "RA"
+	movk	x15, #0x004d, lsl #32		// "M"
+	str	x15, [x14, #8 + (8 * \ms)]
+	.endm
+
+	.macro	forge_mark, ms
+	forge_mark_one 0x4480, \ms		// candidate A: 0x44800000
+	forge_mark_one 0x4e10, \ms		// candidate B: 0x4e100000
 	dsb	sy
 	.endm
 
@@ -253,10 +267,12 @@ ENTRY(stext)
 	forge_mark 1				// FORGE: entered stext (MMU/dcache off)
 	bl	preserve_boot_args
 	bl	el2_setup			// Drop to EL1, w0=cpu_boot_mode
+	forge_mark 2				// FORGE: el2_setup done (w0 preserved)
 	adrp	x23, __PHYS_OFFSET
 	and	x23, x23, MIN_KIMG_ALIGN - 1	// KASLR offset, defaults to 0
 	bl	set_cpu_boot_mode_flag
 	bl	__create_page_tables
+	forge_mark 3				// FORGE: page tables built
 	/*
 	 * The following calls CPU setup code, see arch/arm64/mm/proc.S for
 	 * details.
