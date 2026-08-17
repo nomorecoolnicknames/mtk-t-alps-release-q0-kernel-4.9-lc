@@ -25,20 +25,41 @@
 #define SIP_SVC_E_INVALID_Range         -3
 #define SIP_SVC_E_PERMISSION_DENY       -4
 
-#define MTK_SIP_KERNEL_MCUSYS_WRITE         0x82000287
-#define MTK_SIP_KERNEL_MCUSYS_ACCESS_COUNT  0x82000288
-#define MTK_SIP_KERNEL_L2_SHARING           0x82000286
-#define MTK_SIP_KERNEL_WDT                  0x82000200
+/*
+ * forge m5c: the SIP function IDs below were renumbered in a newer MTK BSP,
+ * but the m5c's stock 2017 ATF (unchanged, we never reflash tee/ATF)
+ * implements the ORIGINAL numbering. Sending the new IDs = the SMC is
+ * rejected by ATF and the kernel-side effect silently never happens.
+ * This is what stopped the system counter: enable_cpuxgpt() writes
+ * MCUCFG via mcusys_smc_write_phy() = SMC(MTK_SIP_KERNEL_MCUSYS_WRITE);
+ * with 0x82000287 ATF dropped it, EN_CPUXGPT never set, CNTPCT stuck at 0
+ * (measured, p19), the first timed sleep (kthread_bind_mask ->
+ * wait_task_inactive) never woke, and boot hung in workqueue_init.
+ * Values restored byte-for-byte to the hardware-proven 3.18 m5c header,
+ * which is what this ATF speaks. Same class as fan5405/alsps/lp3101/
+ * flashlight/apxgpt: a divergence from what the stock platform provides.
+ */
+#define MTK_SIP_KERNEL_MCUSYS_WRITE         0x82000201
+#define MTK_SIP_KERNEL_MCUSYS_ACCESS_COUNT  0x82000202
+#define MTK_SIP_KERNEL_L2_SHARING           0x82000203
+#define MTK_SIP_KERNEL_WDT                  0x82000204
 
 #define TBASE_SMC_AEE_DUMP                  (0xB200AEED)
-#define MTK_SIP_KERNEL_GIC_DUMP         0x82000201
-#define MTK_SIP_KERNEL_DAPC_INIT        0x8200026E
-#define MTK_SIP_KERNEL_EMIMPU_WRITE         0x82000260
-#define MTK_SIP_KERNEL_EMIMPU_READ          0x82000261
-#define MTK_SIP_KERNEL_EMIMPU_SET           0x82000262
+#define MTK_SIP_KERNEL_GIC_DUMP         0x82000205
+#define MTK_SIP_KERNEL_DAPC_INIT        0x82000206
+#define MTK_SIP_KERNEL_EMIMPU_WRITE         0x82000207
+#define MTK_SIP_KERNEL_EMIMPU_READ          0x82000208
+#define MTK_SIP_KERNEL_EMIMPU_SET           0x82000209
+#define MTK_SIP_KERNEL_MSG                  0x820002ff
+/*
+ * IDs below are NOT in the stock 3.18/ATF map, so the ATF has no handler
+ * for them - the calls are no-ops on this device. TIME_SYNC is moved off
+ * 0x82000202 so it can never collide with the (now correct) ACCESS_COUNT
+ * handler if atf_logger ever issues it. ICACHE_DUMP / GPIO_* keep their
+ * unique values (no collision with 0x820002xx).
+ */
 #define MTK_SIP_KERNEL_ICACHE_DUMP          0x82000284
-#define MTK_SIP_KERNEL_TIME_SYNC		0x82000202
-#define MTK_SIP_KERNEL_MSG                  0x82000214
+#define MTK_SIP_KERNEL_TIME_SYNC		0x820002fe
 #define MTK_SIP_KERNEL_GPIO_WRITE   0xC20002A1
 #define MTK_SIP_KERNEL_GPIO_READ    0xC20002A2
 
