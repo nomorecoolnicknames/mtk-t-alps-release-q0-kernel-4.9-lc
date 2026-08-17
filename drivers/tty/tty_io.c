@@ -3605,6 +3605,11 @@ void tty_default_fops(struct file_operations *fops)
  * Just do some early initializations, and do the complex setup
  * later.
  */
+/* FORGE boot markers (m5c 4.9 bring-up); strong defs in arm64 setup.c.
+ * Weak stubs so other configurations still link. */
+void __weak forge_kmark(int ms) { }
+void __weak forge_kmark_ptr(int ms, unsigned long v) { }
+
 void __init console_init(void)
 {
 	initcall_t *call;
@@ -3618,9 +3623,13 @@ void __init console_init(void)
 	 */
 	call = __con_initcall_start;
 	while (call < __con_initcall_end) {
+		/* FORGE: record the initcall about to run; if it wedges, the
+		 * surviving slot-19 value names it via System.map. */
+		forge_kmark_ptr(19, (unsigned long)*call);
 		(*call)();
 		call++;
 	}
+	forge_kmark(20);	/* FORGE: all console initcalls done */
 }
 
 static char *tty_devnode(struct device *dev, umode_t *mode)

@@ -289,6 +289,22 @@ void forge_kmark(int ms)
 	}
 }
 
+/* Like forge_kmark but the slot carries an arbitrary value (e.g. the
+ * address of the initcall about to run); decode with the build's
+ * System.map. */
+void forge_kmark_ptr(int ms, unsigned long v)
+{
+	unsigned long bases[2] = { FORGE_A, FORGE_B };
+	int i;
+
+	for (i = 0; i < 2; i++) {
+		void *p = phys_to_virt(bases[i]);
+
+		*(volatile u64 *)(p + 8 + 8 * ms) = v;
+		__flush_dcache_area(p, 256);
+	}
+}
+
 void __init setup_arch(char **cmdline_p)
 {
 	pr_info("Boot CPU: AArch64 Processor [%08x]\n", read_cpuid_id());
