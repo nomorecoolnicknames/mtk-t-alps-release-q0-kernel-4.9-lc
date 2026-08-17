@@ -1048,14 +1048,18 @@ static noinline void __init kernel_init_freeable(void)
 
 	cad_pid = task_pid(current);
 
+	forge_kmark(21);		/* FORGE: before smp_prepare_cpus */
 	smp_prepare_cpus(setup_max_cpus);
+	forge_kmark(22);		/* FORGE: smp_prepare_cpus done */
 
 	workqueue_init();
 
 	do_pre_smp_initcalls();
 	lockup_detector_init();
 
+	forge_kmark(28);		/* FORGE: before smp_init */
 	smp_init();
+	forge_kmark(29);		/* FORGE: smp_init done */
 	sched_init_smp();
 
 	page_alloc_init_late();

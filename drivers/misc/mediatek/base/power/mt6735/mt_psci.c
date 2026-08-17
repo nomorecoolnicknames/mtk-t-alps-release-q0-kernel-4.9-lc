@@ -20,6 +20,10 @@
 
 #ifdef CONFIG_SMP
 
+/* FORGE m5c boot markers (defined in arch/arm64/kernel/setup.c) */
+extern void forge_kmark(int ms);
+
+
 /* 4.9 cpu_operations: cpu_init/cpu_init_idle take only the cpu number */
 static int __init mt_psci_cpu_init(unsigned int cpu)
 {
@@ -28,8 +32,10 @@ static int __init mt_psci_cpu_init(unsigned int cpu)
 
 static int __init mt_psci_cpu_prepare(unsigned int cpu)
 {
+	forge_kmark(23);		/* FORGE: cpu_prepare entered */
 	if (cpu == 1)
 		spm_mtcmos_cpu_init();
+	forge_kmark(24);		/* FORGE: cpu_prepare done (mtcmos init ok) */
 	return cpu_psci_ops.cpu_prepare(cpu);
 }
 
@@ -37,11 +43,15 @@ static int mt_psci_cpu_boot(unsigned int cpu)
 {
 	int ret;
 
+	forge_kmark(25);		/* FORGE: cpu_boot entered */
 	ret = cpu_psci_ops.cpu_boot(cpu);
+	forge_kmark(26);		/* FORGE: psci cpu_on returned */
 	if (ret < 0)
 		return ret;
 
-	return spm_mtcmos_ctrl_cpu(cpu, STA_POWER_ON, 1);
+	ret = spm_mtcmos_ctrl_cpu(cpu, STA_POWER_ON, 1);
+	forge_kmark(27);		/* FORGE: mtcmos POWER_ON returned */
+	return ret;
 }
 
 #ifdef CONFIG_HOTPLUG_CPU
