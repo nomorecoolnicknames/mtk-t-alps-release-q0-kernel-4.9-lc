@@ -36,6 +36,11 @@ enum ION_MM_CMDS {
 	ION_MM_CONFIG_BUFFER_EXT,
 	ION_MM_ACQ_CACHE_POOL,
 	ION_MM_QRY_CACHE_POOL,
+	/* referenced by compat_ion.c and struct ion_mm_data in this header,
+	 * but the enum members were missing in this tree's merge state;
+	 * ion_drv.c does not implement them, callers get -EINVAL. */
+	ION_MM_GET_IOVA,
+	ION_MM_GET_IOVA_EXT,
 };
 
 enum ION_SYS_CMDS {
