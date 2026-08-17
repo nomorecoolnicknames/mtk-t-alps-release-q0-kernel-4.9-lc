@@ -243,9 +243,17 @@ int  mtk_wdt_confirm_hwreboot(void)
 
 void mtk_wdt_restart(enum wd_restart_type type)
 {
-
 #ifdef CONFIG_OF
 	struct device_node *np_rgu;
+#endif
+
+#ifdef CONFIG_MTK_WDT_DIAG_HARD
+	/* m5c bring-up deadman: never kick - any hang warm-resets with
+	 * DRAM (log + markers) intact. See Kconfig help. */
+	return;
+#endif
+
+#ifdef CONFIG_OF
 
 	np_rgu = of_find_compatible_node(NULL, NULL, rgu_of_match[0].compatible);
 
@@ -695,7 +703,13 @@ static int mtk_wdt_probe(struct platform_device *dev)
 	#define MAGIC_NUM_MASK		(0x3)
 
 
-    #ifdef CONFIG_MTK_WD_KICKER	/* Initialize to dual mode */
+    #ifdef CONFIG_MTK_WDT_DIAG_HARD
+	/* m5c bring-up deadman: plain reset mode like LK's arming - no
+	 * dual/IRQ stage (an IRQ-stage WDT cannot fire with IRQs wedged
+	 * off), and nothing will kick it. */
+	pr_info("mtk_wdt_probe : DIAG_HARD deadman, plain reset mode\n");
+	mtk_wdt_mode_config(FALSE, FALSE, TRUE, FALSE, TRUE);
+    #elif defined(CONFIG_MTK_WD_KICKER)	/* Initialize to dual mode */
 	pr_debug("mtk_wdt_probe : Initialize to dual mode\n");
 	mtk_wdt_mode_config(TRUE, TRUE, TRUE, FALSE, TRUE);
 	#else				/* Initialize to disable wdt */
