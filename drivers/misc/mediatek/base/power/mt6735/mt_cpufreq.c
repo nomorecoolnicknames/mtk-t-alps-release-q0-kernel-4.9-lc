@@ -29,6 +29,9 @@
 #include <linux/sched.h>
 #include <linux/init.h>
 #include <linux/cpu.h>
+
+/* FORGE m5c p25 DIAGNOSTIC (defined in arch/arm64/kernel/setup.c) */
+extern void forge_kmark_ptr(int ms, unsigned long v);
 #include <linux/cpufreq.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
@@ -2718,6 +2721,12 @@ static int _mt_cpufreq_set_locked(struct mt_cpu_dvfs *p, unsigned int cur_khz,
 
 	FUNC_ENTER(FUNC_LV_HELP);
 
+	/* FORGE m5c p25 DIAGNOSTIC: every DVFS transition brackets as
+	 * slot70 (target_khz, on entry) / slot71 (volt, on exit). If the
+	 * 4.6s whole-SoC freeze ever shows 70 without 71, the wedge is
+	 * inside set_cur_volt/set_cur_freq (Vproc brownout suspect). */
+	forge_kmark_ptr(70, target_khz);
+
 	volt = _mt_cpufreq_search_available_volt(p, target_khz);
 
 #ifdef CONFIG_CPU_DVFS_TURBO_MODE
@@ -2814,6 +2823,8 @@ static int _mt_cpufreq_set_locked(struct mt_cpu_dvfs *p, unsigned int cur_khz,
 
 	FUNC_EXIT(FUNC_LV_HELP);
 out:
+	/* FORGE m5c p25: closing bracket of slot 70 (see entry above) */
+	forge_kmark_ptr(71, volt);
 	return ret;
 }
 

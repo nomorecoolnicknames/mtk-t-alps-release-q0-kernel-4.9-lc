@@ -2385,6 +2385,14 @@ static int musb_gadget_pullup(struct usb_gadget *gadget, int is_on)
 	unsigned long        flags;
 	bool usb_in = false;
 
+	/* FORGE m5c p25 DIAGNOSTIC: init reconfigures the USB gadget at
+	 * ~4.7s on the working 3.18 boot - right where our 4.9 boot dies.
+	 * Bracket the pullup so a bus-hang here is visible in DRAM. */
+	{
+		extern void forge_kmark_ptr(int ms, unsigned long v);
+		forge_kmark_ptr(73, (unsigned long)is_on);
+	}
+
 	DBG(0, "is_on=%d, softconnect=%d ++\n", is_on, musb->softconnect);
 
 	is_on = !!is_on;

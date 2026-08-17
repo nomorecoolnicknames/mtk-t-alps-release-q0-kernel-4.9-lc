@@ -643,6 +643,13 @@ int usb_gadget_connect(struct usb_gadget *gadget)
 {
 	int ret = 0;
 
+	/* FORGE m5c p28 DIAGNOSTIC (slot 80): init's gadget enable reaches
+	 * the UDC layer here - brackets the 4.6s wedge vs slot 73 (pullup). */
+	{
+		extern void forge_kmark_ptr(int ms, unsigned long v);
+		forge_kmark_ptr(80, 1);
+	}
+
 	if (!gadget->ops->pullup) {
 		ret = -EOPNOTSUPP;
 		goto out;

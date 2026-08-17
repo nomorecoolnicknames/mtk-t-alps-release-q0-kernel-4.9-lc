@@ -62,6 +62,12 @@ static int mt_psci_cpu_disable(unsigned int cpu)
 
 static void mt_psci_cpu_die(unsigned int cpu)
 {
+	/* FORGE m5c p28 DIAGNOSTIC: CPU power-down via ATF (slot 85 = cpu id).
+	 * Suspect path for the 4.6s total-SoC wedge. */
+	{
+		extern void forge_kmark_ptr(int ms, unsigned long v);
+		forge_kmark_ptr(85, (unsigned long)cpu);
+	}
 	cpu_psci_ops.cpu_die(cpu);
 }
 

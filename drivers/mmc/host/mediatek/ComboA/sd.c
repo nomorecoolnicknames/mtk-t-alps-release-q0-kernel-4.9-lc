@@ -4155,6 +4155,15 @@ static void msdc_ops_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	int host_cookie = 0;
 	struct msdc_host *host = mmc_priv(mmc);
 
+	/* FORGE m5c p25 DIAGNOSTIC: last in-flight mmc opcode (75) + host id
+	 * (76). If the 4.6s freeze shows an 18/25 (read/write) here, the
+	 * wedge is an msdc transaction that never completed. */
+	{
+		extern void forge_kmark_ptr(int ms, unsigned long v);
+		forge_kmark_ptr(75, mrq->cmd->opcode);
+		forge_kmark_ptr(76, (unsigned long)host->id);
+	}
+
 	if ((host->hw->host_function == MSDC_SDIO) &&
 	    !(host->trans_lock.active))
 		__pm_stay_awake(&host->trans_lock);
@@ -4779,6 +4788,15 @@ static irqreturn_t msdc_irq(int irq, void *dev_id)
 
 	intsts = MSDC_READ32(MSDC_INT);
 	host->intsts = intsts; /* save int raw status */
+
+	/* FORGE m5c p26 DIAGNOSTIC: any msdc interrupt landing gets stamped
+	 * (slot 78 = intsts). Paired with slot 75 (in-flight opcode), tells
+	 * whether the transaction that brackets the 4.6s freeze ever
+	 * completed (75 set / 78 still 0 = IRQ never fired = bus wedge). */
+	{
+		extern void forge_kmark_ptr(int ms, unsigned long v);
+		forge_kmark_ptr(78, (unsigned long)intsts);
+	}
 
 	latest_int_status[host->id] = intsts;
 	inten = MSDC_READ32(MSDC_INTEN);

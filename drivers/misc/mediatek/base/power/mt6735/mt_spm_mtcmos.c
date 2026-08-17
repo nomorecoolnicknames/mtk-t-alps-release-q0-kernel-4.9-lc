@@ -83,6 +83,12 @@ static spm_cpu_mtcmos_ctrl_func spm_cpu_mtcmos_ctrl_funcs[] = {
 
 int spm_mtcmos_ctrl_cpu(unsigned int cpu, int state, int chkWfiBeforePdn)
 {
+	/* FORGE m5c p28 DIAGNOSTIC: any CPU power-domain op (slot 86 =
+	 * cpu | state<<8). A wedge inside the domain switch shows here. */
+	{
+		extern void forge_kmark_ptr(int ms, unsigned long v);
+		forge_kmark_ptr(86, (unsigned long)(cpu | (state << 8)));
+	}
 	return (*spm_cpu_mtcmos_ctrl_funcs[cpu]) (state, chkWfiBeforePdn);
 }
 
