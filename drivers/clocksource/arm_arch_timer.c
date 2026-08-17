@@ -217,9 +217,22 @@ static irqreturn_t arch_timer_handler_virt(int irq, void *dev_id)
 	return timer_handler(ARCH_TIMER_VIRT_ACCESS, evt);
 }
 
+/* FORGE m5c boot markers (defined in arch/arm64/kernel/setup.c) */
+extern void forge_kmark(int ms);
+extern void forge_kmark_ptr(int ms, unsigned long v);
+
 static irqreturn_t arch_timer_handler_phys(int irq, void *dev_id)
 {
 	struct clock_event_device *evt = dev_id;
+	static bool forge_first_tick = true;
+	static unsigned long forge_ticks;
+
+	if (forge_first_tick) {
+		forge_first_tick = false;
+		forge_kmark(55);	/* FORGE: arch timer PPI FIRED at least once */
+	}
+	if (system_state == SYSTEM_BOOTING)
+		forge_kmark_ptr(56, ++forge_ticks);
 
 	return timer_handler(ARCH_TIMER_PHYS_ACCESS, evt);
 }

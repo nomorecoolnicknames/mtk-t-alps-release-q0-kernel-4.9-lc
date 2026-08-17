@@ -1434,14 +1434,26 @@ out:
  * smp_call_function() if an IPI is sent by the same process we are
  * waiting to become inactive.
  */
+/* FORGE m5c boot markers (defined in arch/arm64/kernel/setup.c) */
+extern void forge_kmark_ptr(int ms, unsigned long v);
+
 unsigned long wait_task_inactive(struct task_struct *p, long match_state)
 {
 	int running, queued;
 	struct rq_flags rf;
 	unsigned long ncsw;
 	struct rq *rq;
+	static unsigned long forge_wti_iters;
 
 	for (;;) {
+		if (system_state == SYSTEM_BOOTING) {
+			unsigned long c;
+
+			asm volatile("mrs %0, cntvct_el0" : "=r"(c));
+			forge_kmark_ptr(52, jiffies);	/* frozen = no tick */
+			forge_kmark_ptr(53, c);		/* keeps counting */
+			forge_kmark_ptr(54, ++forge_wti_iters);
+		}
 		/*
 		 * We do the initial early heuristics without holding
 		 * any task-queue locks at all. We'll only try to get

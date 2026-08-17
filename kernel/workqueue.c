@@ -1777,7 +1777,16 @@ static void worker_detach_from_pool(struct worker *worker,
  */
 /* FORGE m5c boot markers (defined in arch/arm64/kernel/setup.c) */
 extern void forge_kmark(int ms);
+extern void forge_kmark_ptr(int ms, unsigned long v);
 static bool forge_first_worker = true;
+
+static inline unsigned long forge_cntvct(void)
+{
+	unsigned long c;
+
+	asm volatile("mrs %0, cntvct_el0" : "=r"(c));
+	return c;
+}
 
 static struct worker *create_worker(struct worker_pool *pool)
 {
@@ -1817,10 +1826,22 @@ static struct worker *create_worker(struct worker_pool *pool)
 		goto fail;
 
 	set_user_nice(worker->task, pool->attrs->nice);
+	if (forge_trace) {
+		forge_kmark(44);	/* FORGE: set_user_nice done */
+		forge_kmark_ptr(48, jiffies);		/* jiffies before bind */
+		forge_kmark_ptr(49, forge_cntvct());	/* cntvct before bind */
+	}
 	kthread_bind_mask(worker->task, pool->attrs->cpumask);
+	if (forge_trace) {
+		forge_kmark(45);	/* FORGE: kthread_bind_mask done */
+		forge_kmark_ptr(50, jiffies);		/* jiffies after bind */
+		forge_kmark_ptr(51, forge_cntvct());	/* cntvct after bind */
+	}
 
 	/* successful, attach the worker to the pool */
 	worker_attach_to_pool(worker, pool);
+	if (forge_trace)
+		forge_kmark(46);	/* FORGE: worker_attach_to_pool done */
 
 	/* start the newly created worker */
 	spin_lock_irq(&pool->lock);
