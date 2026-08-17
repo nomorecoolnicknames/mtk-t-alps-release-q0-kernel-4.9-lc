@@ -1053,8 +1053,10 @@ static noinline void __init kernel_init_freeable(void)
 	forge_kmark(22);		/* FORGE: smp_prepare_cpus done */
 
 	workqueue_init();
+	forge_kmark(31);		/* FORGE: workqueue_init done */
 
 	do_pre_smp_initcalls();
+	forge_kmark(32);		/* FORGE: pre-smp initcalls done */
 	lockup_detector_init();
 
 	forge_kmark(28);		/* FORGE: before smp_init */

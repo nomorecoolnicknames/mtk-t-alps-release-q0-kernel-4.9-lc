@@ -285,7 +285,7 @@ void forge_kmark(int ms)
 		*(volatile u32 *)(p + 4) = 0x00393445;		/* "E49\0" */
 		*(volatile u64 *)(p + 8 + 8 * ms) =
 			((u64)0x4152 << 16) | (0x4100 | (ms & 0xff));
-		__flush_dcache_area(p, 256);	/* covers slots up to ms=30 */
+		__flush_dcache_area(p, 512);	/* covers slots up to ms=62 */
 	}
 }
 
@@ -301,7 +301,7 @@ void forge_kmark_ptr(int ms, unsigned long v)
 		void *p = phys_to_virt(bases[i]);
 
 		*(volatile u64 *)(p + 8 + 8 * ms) = v;
-		__flush_dcache_area(p, 256);
+		__flush_dcache_area(p, 512);
 	}
 }
 
