@@ -936,6 +936,11 @@ static int __init gpt_mod_init(void)
 
 module_init(gpt_mod_init);
 CLOCKSOURCE_OF_DECLARE(mtk_apxgpt, "mediatek,APXGPT", mt_gpt_init);
+/* forge m5c: the stock DTB names the node apxgpt@10004000 with this
+ * compatible (the 3.18 driver matches exactly it); without the entry the
+ * GPT clocksource/sched_clock never initialises on the stock DTB and the
+ * kernel falls back to the 250 Hz jiffies sched_clock. */
+CLOCKSOURCE_OF_DECLARE(mtk_apxgpt_m5c, "mediatek,mt6735-apxgpt", mt_gpt_init);
 
 MODULE_DESCRIPTION("MT6580 GPT Driver v0.1");
 MODULE_LICENSE("GPL");
