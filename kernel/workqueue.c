@@ -1775,11 +1775,21 @@ static void worker_detach_from_pool(struct worker *worker,
  * Return:
  * Pointer to the newly created worker.
  */
+/* FORGE m5c boot markers (defined in arch/arm64/kernel/setup.c) */
+extern void forge_kmark(int ms);
+static bool forge_first_worker = true;
+
 static struct worker *create_worker(struct worker_pool *pool)
 {
 	struct worker *worker = NULL;
 	int id = -1;
 	char id_buf[16];
+	bool forge_trace = forge_first_worker;
+
+	if (forge_trace) {
+		forge_first_worker = false;
+		forge_kmark(38);	/* FORGE: first create_worker entered */
+	}
 
 	/* ID is needed to determine kthread name */
 	id = ida_simple_get(&pool->worker_ida, 0, 0, GFP_KERNEL);
@@ -1801,6 +1811,8 @@ static struct worker *create_worker(struct worker_pool *pool)
 
 	worker->task = kthread_create_on_node(worker_thread, worker, pool->node,
 					      "kworker/%s", id_buf);
+	if (forge_trace)
+		forge_kmark(39);	/* FORGE: kthread_create_on_node returned */
 	if (IS_ERR(worker->task))
 		goto fail;
 
@@ -1816,6 +1828,8 @@ static struct worker *create_worker(struct worker_pool *pool)
 	worker_enter_idle(worker);
 	wake_up_process(worker->task);
 	spin_unlock_irq(&pool->lock);
+	if (forge_trace)
+		forge_kmark(40);	/* FORGE: first worker woken */
 
 	return worker;
 
@@ -5640,6 +5654,7 @@ int __init workqueue_init(void)
 	struct worker_pool *pool;
 	int cpu, bkt;
 
+	forge_kmark(33);		/* FORGE: workqueue_init entered */
 	/* create the initial workers */
 	for_each_online_cpu(cpu) {
 		for_each_cpu_worker_pool(pool, cpu) {
@@ -5647,9 +5662,11 @@ int __init workqueue_init(void)
 			BUG_ON(!create_worker(pool));
 		}
 	}
+	forge_kmark(35);		/* FORGE: per-cpu worker pools done */
 
 	hash_for_each(unbound_pool_hash, bkt, pool, hash_node)
 		BUG_ON(!create_worker(pool));
+	forge_kmark(36);		/* FORGE: unbound pool workers done */
 
 	wq_online = true;
 	wq_watchdog_init();
