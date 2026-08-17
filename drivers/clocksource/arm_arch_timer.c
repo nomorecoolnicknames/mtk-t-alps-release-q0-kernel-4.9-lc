@@ -493,11 +493,18 @@ static int arch_timer_starting_cpu(unsigned int cpu)
 {
 	struct clock_event_device *clk = this_cpu_ptr(arch_timer_evt);
 	u32 flags;
+	static bool forge_first_start = true;
+
+	if (forge_first_start) {
+		forge_first_start = false;
+		forge_kmark(61);	/* FORGE: arch_timer_starting_cpu ran (boot CPU) */
+	}
 
 	__arch_timer_setup(ARCH_CP15_TIMER, clk);
 
 	flags = check_ppi_trigger(arch_timer_ppi[arch_timer_uses_ppi]);
 	enable_percpu_irq(arch_timer_ppi[arch_timer_uses_ppi], flags);
+	forge_kmark(62);		/* FORGE: enable_percpu_irq(main ppi) called */
 
 	if (arch_timer_has_nonsecure_ppi()) {
 		flags = check_ppi_trigger(arch_timer_ppi[PHYS_NONSECURE_PPI]);

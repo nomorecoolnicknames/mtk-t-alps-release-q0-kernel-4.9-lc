@@ -1447,12 +1447,18 @@ unsigned long wait_task_inactive(struct task_struct *p, long match_state)
 
 	for (;;) {
 		if (system_state == SYSTEM_BOOTING) {
-			unsigned long c;
+			unsigned long pct, ctl, cval;
+			extern unsigned long forge_gicd_isenabler0(void);
 
-			asm volatile("mrs %0, cntvct_el0" : "=r"(c));
-			forge_kmark_ptr(52, jiffies);	/* frozen = no tick */
-			forge_kmark_ptr(53, c);		/* keeps counting */
+			asm volatile("mrs %0, cntpct_el0"  : "=r"(pct));
+			asm volatile("mrs %0, cntp_ctl_el0"  : "=r"(ctl));
+			asm volatile("mrs %0, cntp_cval_el0" : "=r"(cval));
+			forge_kmark_ptr(52, get_jiffies_64()); /* full 64b, frozen=no tick */
 			forge_kmark_ptr(54, ++forge_wti_iters);
+			forge_kmark_ptr(57, pct);	/* CNTPCT physical counter */
+			forge_kmark_ptr(58, ctl);	/* CNTP_CTL: en/imask/istatus */
+			forge_kmark_ptr(59, cval);	/* CNTP_CVAL compare value */
+			forge_kmark_ptr(60, forge_gicd_isenabler0()); /* PPI29/30 enabled? */
 		}
 		/*
 		 * We do the initial early heuristics without holding

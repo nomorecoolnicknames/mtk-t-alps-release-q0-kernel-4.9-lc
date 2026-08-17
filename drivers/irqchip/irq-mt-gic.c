@@ -158,6 +158,15 @@ static void gic_eoi_irq(struct irq_data *d)
 
 
 void __iomem *GIC_DIST_BASE;
+
+/* FORGE m5c: read GICD_ISENABLER0 (IRQ 0..31 enable bits, incl PPI 29/30) */
+unsigned long forge_gicd_isenabler0(void)
+{
+	if (!GIC_DIST_BASE)
+		return ~0UL;
+	return readl_relaxed(GIC_DIST_BASE + GIC_DIST_ENABLE_SET);
+}
+
 void __iomem *GIC_CPU_BASE;
 void __iomem *INT_POL_CTL0;
 phys_addr_t INT_POL_CTL0_phys;
