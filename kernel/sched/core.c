@@ -1459,6 +1459,13 @@ unsigned long wait_task_inactive(struct task_struct *p, long match_state)
 			forge_kmark_ptr(58, ctl);	/* CNTP_CTL: en/imask/istatus */
 			forge_kmark_ptr(59, cval);	/* CNTP_CVAL compare value */
 			forge_kmark_ptr(60, forge_gicd_isenabler0()); /* PPI29/30 enabled? */
+			{
+				extern unsigned long forge_tick_name8(void);
+				extern unsigned long forge_gicd_isenabler(int word);
+
+				forge_kmark_ptr(63, forge_tick_name8()); /* WHICH tick device */
+				forge_kmark_ptr(64, forge_gicd_isenabler(5)); /* SPI184 bit24 */
+			}
 		}
 		/*
 		 * We do the initial early heuristics without holding
