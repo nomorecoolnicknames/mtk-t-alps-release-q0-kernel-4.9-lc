@@ -243,9 +243,12 @@ u64 __cpu_logical_map[NR_CPUS] = { [0 ... NR_CPUS-1] = INVALID_HWID };
  * Milestones (C): 5=setup_arch/ioremap live, 6=fdt scanned,
  * 7=memblock done, 8=paging_init done, 9=setup_arch end.
  */
+#define FORGE_A	0x7f000000UL
+#define FORGE_B	0xb0000000UL
+
 static void __init forge_cmark(int ms)
 {
-	static const phys_addr_t bases[2] = { 0x7f000000, 0xb0000000 };
+	static const phys_addr_t bases[2] = { FORGE_A, FORGE_B };
 	int i;
 
 	for (i = 0; i < 2; i++) {
@@ -258,6 +261,31 @@ static void __init forge_cmark(int ms)
 		writeq(((u64)0x4152 << 16) | (0x4100 | (ms & 0xff)),
 		       p + 8 + 8 * ms);			/* slot: ms,'A','R','A' */
 		early_iounmap(p, 128);
+	}
+}
+
+/*
+ * forge_kmark: same markers but for the start_kernel phase, after
+ * early_ioremap is torn down. The linear map is up (post paging_init), so
+ * reach the scratch pages by phys_to_virt - but that mapping is CACHED, so
+ * the cacheline must be flushed to DRAM or the recovery /dev/mem read (which
+ * sees DRAM) would miss it if the CPU wedges. Milestones 10..16 are stamped
+ * from init/main.c around the init calls most likely to hang on this graft
+ * (init_IRQ = mt-gic, time_init = mt_gpt, console_init).
+ */
+void forge_kmark(int ms)
+{
+	unsigned long bases[2] = { FORGE_A, FORGE_B };
+	int i;
+
+	for (i = 0; i < 2; i++) {
+		void *p = phys_to_virt(bases[i]);
+
+		*(volatile u32 *)(p + 0) = 0x47524f46;		/* "FORG" */
+		*(volatile u32 *)(p + 4) = 0x00393445;		/* "E49\0" */
+		*(volatile u64 *)(p + 8 + 8 * ms) =
+			((u64)0x4152 << 16) | (0x4100 | (ms & 0xff));
+		__flush_dcache_area(p, 256);	/* covers slots up to ms=30 */
 	}
 }
 

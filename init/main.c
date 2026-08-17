@@ -95,6 +95,10 @@
 
 static int kernel_init(void *);
 
+/* FORGE boot markers (m5c 4.9 bring-up); defined in arch/arm64 setup.c.
+ * Weak so non-arm64 / marker-less builds still link. */
+void __weak forge_kmark(int ms) { }
+
 extern void init_IRQ(void);
 extern void fork_init(void);
 extern void radix_tree_init(void);
@@ -509,6 +513,7 @@ asmlinkage __visible void __init start_kernel(void)
 	page_address_init();
 	pr_notice("%s", linux_banner);
 	setup_arch(&command_line);
+	forge_kmark(10);		/* FORGE: back in start_kernel */
 	mm_init_cpumask(&init_mm);
 	setup_command_line(command_line);
 	setup_nr_cpu_ids();
@@ -541,6 +546,7 @@ asmlinkage __visible void __init start_kernel(void)
 	sort_main_extable();
 	trap_init();
 	mm_init();
+	forge_kmark(11);		/* FORGE: mm_init done */
 
 	/*
 	 * Set up the scheduler prior starting any interrupts (such as the
@@ -548,6 +554,7 @@ asmlinkage __visible void __init start_kernel(void)
 	 * time - but meanwhile we still have a functioning scheduler.
 	 */
 	sched_init();
+	forge_kmark(12);		/* FORGE: sched_init done */
 	/*
 	 * Disable preemption - early bootup scheduling is extremely
 	 * fragile until we cpu_idle() for the first time.
@@ -574,14 +581,18 @@ asmlinkage __visible void __init start_kernel(void)
 	radix_tree_init();
 	/* init some links before init_ISA_irqs() */
 	early_irq_init();
+	forge_kmark(13);		/* FORGE: before init_IRQ (mt-gic) */
 	init_IRQ();
+	forge_kmark(14);		/* FORGE: init_IRQ (mt-gic) done */
 	tick_init();
 	rcu_init_nohz();
 	init_timers();
 	hrtimers_init();
 	softirq_init();
 	timekeeping_init();
+	forge_kmark(15);		/* FORGE: before time_init (mt_gpt) */
 	time_init();
+	forge_kmark(16);		/* FORGE: time_init (mt_gpt) done */
 	sched_clock_postinit();
 	printk_nmi_init();
 	perf_event_init();
@@ -598,7 +609,9 @@ asmlinkage __visible void __init start_kernel(void)
 	 * we've done PCI setups etc, and console_init() must be aware of
 	 * this. But we do want output early, in case something goes wrong.
 	 */
+	forge_kmark(17);		/* FORGE: before console_init */
 	console_init();
+	forge_kmark(18);		/* FORGE: console_init done (ram console should be live) */
 	if (panic_later)
 		panic("Too many boot %s vars at `%s'", panic_later,
 		      panic_param);
