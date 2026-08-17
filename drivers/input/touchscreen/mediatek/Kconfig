@@ -79,6 +79,19 @@ config TOUCHSCREEN_MTK_GT9XXTB_HN_NEW
 
 source "drivers/input/touchscreen/mediatek/gt9xxtb_hn_new/Kconfig"
 
+config TOUCHSCREEN_MTK_GT9XXTB_HOTKNOT
+	bool "GT9XXTB hotknot for Mediatek package (m5c proven 3.18 port)"
+	default n
+	help
+	  The Goodix GT9xx hotknot driver ported from the hardware-proven
+	  3.18 m5c tree (GT917D at 1-005d, stock-verified orientation and
+	  factory-config policy: CONFIG_GTP_DRIVER_SEND_CFG=n, header FW
+	  update off).
+
+	  If unsure, say N.
+
+source "drivers/input/touchscreen/mediatek/GT9XXTB_hotknot/Kconfig"
+
 config TOUCHSCREEN_MTK_NT36xxx
 	bool "NT36xxx for Mediatek package"
 	default n
