@@ -683,11 +683,8 @@ struct ram_console_memory_info {
 	u32 magic2;
 };
 
-static void ram_console_fatal(const char *str)
-{
-	pr_err("ram_console: FATAL:%s\n", str);
-	BUG();
-}
+/* ram_console_fatal (BUG on init errors) removed: on m5c it turned a
+ * missing LK memory_info contract into a silent pre-console panic loop. */
 
 void __weak pstore_set_addr_size(unsigned int addr, unsigned int size,
 		unsigned int console_size, unsigned int pmsg_size)
@@ -701,7 +698,7 @@ void __weak sram_log_store_set_addr_size(unsigned int addr, unsigned int size)
 {
 }
 
-static void ram_console_parse_memory_info(struct mem_desc_t *sram,
+static int ram_console_parse_memory_info(struct mem_desc_t *sram,
 		struct ram_console_memory_info *p_memory_info)
 {
 	struct ram_console_memory_info *memory_info = NULL;
@@ -719,8 +716,7 @@ static void ram_console_parse_memory_info(struct mem_desc_t *sram,
 		if (memory_info == NULL) {
 			pr_err("ram_console: [DT] offset:0x%x not map\n",
 					sram->offset);
-			ram_console_fatal("memory_info not map");
-			return;
+			return -1;
 		}
 		magic1 = memory_info->magic1;
 		magic2 = memory_info->magic2;
@@ -748,6 +744,7 @@ static void ram_console_parse_memory_info(struct mem_desc_t *sram,
 					mini_size, mini_addr);
 			memcpy(p_memory_info, memory_info,
 					sizeof(struct ram_console_memory_info));
+			return 0;
 		} else {
 			pr_err("ram_console: [DT] self (0x%x@0x%x)-0x%x@0x%x\n",
 					magic1, magic2,
@@ -758,13 +755,14 @@ static void ram_console_parse_memory_info(struct mem_desc_t *sram,
 			pr_err("ram_console: [DT] mrdump 0x%x@0x%x-0x%x@0x%x\n",
 					mini_size, mini_addr,
 					mrdump_size, mrdump_addr);
-			ram_console_fatal("illegal magic number");
+			/* 2017-era LK does not provide the memory_info
+			 * contract at all - not fatal, caller falls back */
 		}
 	} else {
 		pr_err("ram_console: [DT] offset:0x%x illegal\n",
 			sram->offset);
-		ram_console_fatal("illegal offset");
 	}
+	return -1;
 }
 
 static int __init ram_console_early_init(void)
@@ -776,49 +774,55 @@ static int __init ram_console_early_init(void)
 	struct ram_console_memory_info memory_info_data = {0};
 	unsigned int start, size;
 
-	if (of_scan_flat_dt(dt_get_ram_console, &sram)) {
-		ram_console_parse_memory_info(&sram, &memory_info_data);
+	if (of_scan_flat_dt(dt_get_ram_console, &sram) &&
+	    ram_console_parse_memory_info(&sram, &memory_info_data) == 0 &&
+	    (sram.def_type == RAM_CONSOLE_DEF_SRAM ||
+	     sram.def_type == RAM_CONSOLE_DEF_DRAM)) {
+		/* modern LK contract (chosen/ram_console + memory_info) */
 		if (sram.def_type == RAM_CONSOLE_DEF_SRAM) {
 			pr_info("ram_console: using sram:0x%x\n", sram.start);
 			start = sram.start;
 			size  = sram.size;
 			bufp = ioremap_wc(sram.start, sram.size);
-		} else if (sram.def_type == RAM_CONSOLE_DEF_DRAM) {
+		} else {
 			pr_info("ram_console: using dram:0x%x\n",
 					memory_info_data.dram_addr);
 			start = memory_info_data.dram_addr;
 			size = memory_info_data.dram_size;
 			bufp = remap_lowmem(start, size);
-		} else {
-			pr_err("ram_console: unknown def type:%d\n",
-					sram.def_type);
-			ram_console_fatal("unknown def type");
-			return -ENODEV;
-		}
-		/* unsigned long conversion:
-		 * make size equals to pointer size
-		 * to avoid build error as below for aarch64 case
-		 * (error: cast to 'struct ram_console_buffer *' from
-		 * smaller integer type 'unsigned int'
-		 * [-Werror,-Wint-to-pointer-cast])
-		 */
-		ram_console_buffer_pa =
-			(struct ram_console_buffer *)(unsigned long)start;
-		if (bufp) {
-			buffer_size = size;
-			if (bufp->sig != REBOOT_REASON_SIG) {
-				pr_err("ram_console: illegal sig:0x%x\n",
-						bufp->sig);
-				ram_console_fatal("illegal sig");
-			}
-		} else {
-			pr_err("ram_console: ioremap failed, [0x%x, 0x%x]\n",
-					start, size);
-			ram_console_fatal("ioremap failed");
 		}
 	} else {
-		pr_err("ram_console: of_scan_flat_dt failed\n");
-		ram_console_fatal("of_scan_flat_dt failed");
+		/* FORGE m5c: the 2017 stock LK provides no (or an older)
+		 * chosen/ram_console contract; the Q0 code BUG()'d here,
+		 * which killed the boot inside console_init with no output.
+		 * Fall back to the layout the hardware-proven 3.18 kernel
+		 * uses on this device (and which the stock DTB reserves):
+		 * ram_console 0x43f00000/0x10000, pstore 0x43f10000/0xe0000
+		 * (console 0x10000, pmsg 0x10000). */
+		pr_notice("ram_console: no LK memory_info, using m5c fixed layout\n");
+		start = 0x43f00000;
+		size = 0x10000;
+		bufp = remap_lowmem(start, size);
+		pstore_set_addr_size(0x43f10000, 0xe0000, 0x10000, 0x10000);
+	}
+	/* unsigned long conversion:
+	 * make size equals to pointer size
+	 * to avoid build error as below for aarch64 case
+	 * (error: cast to 'struct ram_console_buffer *' from
+	 * smaller integer type 'unsigned int'
+	 * [-Werror,-Wint-to-pointer-cast])
+	 */
+	ram_console_buffer_pa =
+		(struct ram_console_buffer *)(unsigned long)start;
+	if (bufp) {
+		buffer_size = size;
+		if (bufp->sig != REBOOT_REASON_SIG)
+			pr_err("ram_console: unexpected sig:0x%x (will re-init)\n",
+					bufp->sig);
+	} else {
+		pr_err("ram_console: map failed, [0x%x, 0x%x]\n",
+				start, size);
+		return -ENODEV;
 	}
 #else
 #error "CONFIG_OF NOT defined"
