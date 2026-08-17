@@ -40,7 +40,7 @@ ONTIM_DEBUG_DECLARE_AND_INIT(charge_ic, charge_ic, 8);
 #ifdef FAN5405_BUSNUM
 #undef FAN5405_BUSNUM
 #endif
-#define FAN5405_BUSNUM	3
+#define FAN5405_BUSNUM	1	/* forge m5c: charger sits on i2c1 (1-006a), not 3 */
 
 static struct i2c_client *new_client;
 static const struct i2c_device_id fan5405_i2c_id[] = { {"fan5405", 0}, {} };
@@ -50,6 +50,13 @@ static int fan5405_driver_probe(struct i2c_client *client, const struct i2c_devi
 #ifdef CONFIG_OF
 static const struct of_device_id fan5405_of_match[] = {
 	{.compatible = "fan5405",},
+	/* forge: stock m5c DTB declares the node as
+	 * swithing_charger@6a { compatible = "mediatek,swithing_charger"; }
+	 * so without this entry the driver never binds and charger type
+	 * detection stays CHARGER_UNKNOWN -> USB peripheral never connects.
+	 * (Same fix hardware-verified on our 3.18 tree, commit 2f918464.)
+	 */
+	{.compatible = "mediatek,swithing_charger",},
 	{},
 };
 
@@ -690,6 +697,11 @@ static int __init fan5405_init(void)
 {
 	int ret = 0;
 	struct device_node *node = of_find_compatible_node(NULL, NULL, "fan5405");
+
+	/* forge m5c: the stock DTB uses this compatible instead */
+	if (!node)
+		node = of_find_compatible_node(NULL, NULL,
+					       "mediatek,swithing_charger");
 
 	battery_log(BAT_LOG_CRTI, "[fan5405_init] init start\n");
 
