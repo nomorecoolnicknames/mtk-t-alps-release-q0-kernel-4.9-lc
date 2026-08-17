@@ -50,7 +50,10 @@ struct pinctrl_state *pins_default;
 struct pinctrl_state *eint_as_int, *eint_output0,
 		*eint_output1, *rst_output0, *rst_output1;
 const struct of_device_id touch_of_match[] = {
-	{ .compatible = "mediatek,touch", },
+	/* m5c: stock 2017 DTB touch node is "mediatek,mt6735-touch"
+	 * (fallback "mediatek,mt6735m-touch"); matches 3.18 mtk_tpd.c:54.
+	 */
+	{ .compatible = "mediatek,mt6735-touch", },
 	{},
 };
 

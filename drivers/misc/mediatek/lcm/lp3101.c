@@ -166,7 +166,10 @@ static int lp3101_pinctrl_remove(struct platform_device *pdev)
 
 #ifdef CONFIG_OF
 static const struct of_device_id lp3101_pinctrl_ids[] = {
-	{ .compatible = "mediatek,lp3101" },
+	/* m5c: stock 2017 DTB node is "mediatek,lcd_bais_pinctrl" (sic,
+	 * stock spells it "bais"); matches the working 3.18 lp3101.c:169.
+	 */
+	{ .compatible = "mediatek,lcd_bais_pinctrl" },
 	{ }
 };
 #endif

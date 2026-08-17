@@ -2600,7 +2600,10 @@ int mtkfb_pm_restore_noirq(struct device *device)
 #endif				/*CONFIG_PM */
 /*---------------------------------------------------------------------------*/
 static const struct of_device_id mtkfb_of_ids[] = {
-	{.compatible = "mediatek,mtkfb",},
+	/* m5c: stock 2017 DTB uses uppercase "mediatek,MTKFB" (same as the
+	 * mt6761/63/65 drivers in this tree); lowercase never matches.
+	 */
+	{.compatible = "mediatek,MTKFB",},
 	{}
 };
 
