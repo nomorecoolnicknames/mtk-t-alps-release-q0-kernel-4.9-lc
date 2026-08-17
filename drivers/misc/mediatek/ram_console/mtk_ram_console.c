@@ -286,51 +286,13 @@ unsigned int ram_console_size(void)
 	return ram_console_buffer->sz_console;
 }
 
-#ifdef CONFIG_PSTORE
-void __weak pstore_bconsole_write(struct console *con, const char *s,
-		unsigned int c)
-{
-}
-
-void sram_log_save(const char *msg, int count)
-{
-	pstore_bconsole_write(NULL, msg, count);
-}
-
-void pstore_console_show(enum pstore_type_id type_id, struct seq_file *m,
-		void *v)
-{
-	struct pstore_info *psi = psinfo;
-	char *buf = NULL;
-	ssize_t size;
-	u64 id;
-	int count;
-	enum pstore_type_id type;
-	struct timespec time;
-	bool compressed;
-	ssize_t ecc_notice_size = 0;
-
-	if (!psi)
-		return;
-	mutex_lock(&psi->read_mutex);
-	if (psi->open && psi->open(psi))
-		goto out;
-
-	while ((size = psi->read(&id, &type, &count, &time, &buf, &compressed,
-					&ecc_notice_size, psi)) > 0) {
-		if (type == type_id)
-			seq_write(m, buf, size);
-		kfree(buf);
-		buf = NULL;
-	}
-
-	if (psi->close)
-		psi->close(psi);
-out:
-	mutex_unlock(&psi->read_mutex);
-}
-#else
-void sram_log_save(const char *msg, int count)
+/* The real DRAM ring writer. Q0 hid it under #ifndef CONFIG_PSTORE and,
+ * with PSTORE=y, compiled an sram_log_save that only forwards to
+ * pstore_bconsole_write() - which is a silent no-op until ramoops
+ * registers at device-initcall time (fs/pstore/platform.c checks psinfo).
+ * m5c P10 finding: header written, body empty. Compile the DRAM writer
+ * ALWAYS and call it from both variants; the pstore forward stays. */
+static void ram_console_dram_save(const char *msg, int count)
 {
 	struct ram_console_buffer *buffer;
 	char *rc_console;
@@ -371,6 +333,56 @@ void sram_log_save(const char *msg, int count)
 	}
 
 }
+
+#ifdef CONFIG_PSTORE
+void __weak pstore_bconsole_write(struct console *con, const char *s,
+		unsigned int c)
+{
+}
+
+void sram_log_save(const char *msg, int count)
+{
+	ram_console_dram_save(msg, count);
+	pstore_bconsole_write(NULL, msg, count);
+}
+
+void pstore_console_show(enum pstore_type_id type_id, struct seq_file *m,
+		void *v)
+{
+	struct pstore_info *psi = psinfo;
+	char *buf = NULL;
+	ssize_t size;
+	u64 id;
+	int count;
+	enum pstore_type_id type;
+	struct timespec time;
+	bool compressed;
+	ssize_t ecc_notice_size = 0;
+
+	if (!psi)
+		return;
+	mutex_lock(&psi->read_mutex);
+	if (psi->open && psi->open(psi))
+		goto out;
+
+	while ((size = psi->read(&id, &type, &count, &time, &buf, &compressed,
+					&ecc_notice_size, psi)) > 0) {
+		if (type == type_id)
+			seq_write(m, buf, size);
+		kfree(buf);
+		buf = NULL;
+	}
+
+	if (psi->close)
+		psi->close(psi);
+out:
+	mutex_unlock(&psi->read_mutex);
+}
+#else
+void sram_log_save(const char *msg, int count)
+{
+	ram_console_dram_save(msg, count);
+}
 #endif
 
 #ifdef __aarch64__
@@ -402,12 +414,12 @@ void aee_sram_fiq_log(const char *msg)
 {
 	unsigned int count = strlen(msg);
 	int delay = 100;
-#ifndef CONFIG_PSTORE
-	unsigned int ram_console_buffer_size = ram_console_size();
 
-	if (FIQ_log_size + count > ram_console_buffer_size)
+	/* bounds check for the (now always-live) DRAM writer; was hidden
+	 * under #ifndef CONFIG_PSTORE */
+	if (ram_console_buffer == NULL ||
+	    FIQ_log_size + count > ram_console_size())
 		return;
-#endif
 
 	atomic_set(&rc_in_fiq, 1);
 
