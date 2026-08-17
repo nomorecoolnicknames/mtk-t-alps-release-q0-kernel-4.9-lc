@@ -14,13 +14,14 @@
 #include <linux/smp.h>
 
 #include <asm/cpu_ops.h>
-#include <asm/psci.h>
+#include <linux/psci.h>	/* 4.9: asm/psci.h is gone */
 #include <mach/mt_spm_mtcmos.h>
 #include "mt_cpu_psci_ops.h"
 
 #ifdef CONFIG_SMP
 
-static int __init mt_psci_cpu_init(struct device_node *dn, unsigned int cpu)
+/* 4.9 cpu_operations: cpu_init/cpu_init_idle take only the cpu number */
+static int __init mt_psci_cpu_init(unsigned int cpu)
 {
 	return 0;
 }
@@ -67,10 +68,9 @@ static int mt_psci_cpu_kill(unsigned int cpu)
 #endif
 
 #ifdef CONFIG_CPU_IDLE
-static int mt_psci_cpu_init_idle(struct device_node *cpu_node,
-				 unsigned int cpu)
+static int mt_psci_cpu_init_idle(unsigned int cpu)
 {
-	return cpu_psci_ops.cpu_init_idle(cpu_node, cpu);
+	return cpu_psci_ops.cpu_init_idle(cpu);
 }
 
 static int mt_psci_cpu_suspend(unsigned long index)
