@@ -585,9 +585,15 @@ static int __init ram_console_init(struct ram_console_buffer *buffer,
 	memset_io((void *)buffer + buffer->off_linux, 0,
 			buffer_size - buffer->off_linux);
 	ram_console_init_desc(buffer->off_linux);
-#ifndef CONFIG_PSTORE
+	/* Q0 skipped register_console() when CONFIG_PSTORE is set, relying
+	 * entirely on pstore/ramoops for console capture - but ramoops only
+	 * starts writing at device-initcall time, so a kernel that dies
+	 * between console_init and the ramoops probe leaves an initialised
+	 * header and an EMPTY log body (m5c P9 finding: DBGC header at the
+	 * debug window, zero text). Register the ram console always; it
+	 * coexists with the pstore console and captures printk from
+	 * console_init onward. */
 	register_console(&ram_console);
-#endif
 	ram_console_init_val();
 	ram_console_init_done = 1;
 	return 0;
