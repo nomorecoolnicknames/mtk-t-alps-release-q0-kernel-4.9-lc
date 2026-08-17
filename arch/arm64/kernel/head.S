@@ -44,6 +44,37 @@
 
 #define __PHYS_OFFSET	(KERNEL_START - TEXT_OFFSET)
 
+/*
+ * FORGE early boot markers (m5c 4.9 bring-up, no UART).
+ * Stamp a magic + milestone to a fixed physical DRAM address that both the
+ * bootloader (LK) and the stock TWRP kernel preserve: the minirdump reserved
+ * window (stock DTB: reg=<0x43ff0000 0x10000>, mapped, reserved so it is
+ * never used as general RAM, only written by the stock minidump driver on a
+ * crash). We stamp at +0x800 to dodge any minidump header at the start.
+ * These run with MMU+D-cache OFF (reset state), so the store reaches DRAM
+ * directly; a dsb makes it visible. Read after a bootloop from TWRP:
+ *   dd if=/dev/mem bs=1048576 skip=0 count=0  # (use iflag=skip_bytes below)
+ *   dd if=/dev/mem of=/tmp/fmark.bin bs=1 skip=$((0x43ff0800)) count=32
+ * Layout at 0x43ff0800: "FORG" "E49\0" <u32 milestone> (last writer wins).
+ * Milestones: 1=stext entry, 4=asm setup done (about to enable MMU).
+ * No marker at all => died before/at kernel entry (decompress/bootloader).
+ * Uses only x14/x15 (dead at every call site; x0..x3 boot args untouched).
+ */
+#define FORGE_MARK_PA	0x43ff0800
+	.macro	forge_mark, ms
+	movz	x14, #0x43ff, lsl #16
+	movk	x14, #0x0800			// x14 = FORGE_MARK_PA
+	movz	x15, #0x4f46			// "FORG" (F,O,R,G LE)
+	movk	x15, #0x4752, lsl #16
+	str	w15, [x14]
+	movz	x15, #0x3445			// "E49\0" (E,4,9,NUL LE)
+	movk	x15, #0x0039, lsl #16
+	str	w15, [x14, #4]
+	mov	w15, #\ms
+	str	w15, [x14, #8]
+	dsb	sy
+	.endm
+
 #if (TEXT_OFFSET & 0xfff) != 0
 #error TEXT_OFFSET must be at least 4KB aligned
 #elif (PAGE_OFFSET & 0x1fffff) != 0
@@ -219,6 +250,7 @@ efi_header_end:
 	 *  x19/x20    __primary_switch()         callee preserved temp registers
 	 */
 ENTRY(stext)
+	forge_mark 1				// FORGE: entered stext (MMU/dcache off)
 	bl	preserve_boot_args
 	bl	el2_setup			// Drop to EL1, w0=cpu_boot_mode
 	adrp	x23, __PHYS_OFFSET
@@ -232,6 +264,7 @@ ENTRY(stext)
 	 * the TCR will have been set.
 	 */
 	bl	__cpu_setup			// initialise processor
+	forge_mark 4				// FORGE: asm bring-up done, MMU next
 	b	__primary_switch
 ENDPROC(stext)
 

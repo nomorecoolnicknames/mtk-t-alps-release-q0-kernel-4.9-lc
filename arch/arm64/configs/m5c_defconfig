@@ -235,3 +235,14 @@ CONFIG_ENABLE_DEFAULT_TRACERS=y
 CONFIG_MTK_SCHED_TRACERS=y
 CONFIG_CRYPTO_TWOFISH=y
 # CONFIG_CRYPTO_HW is not set
+# EFI stub off: the working 3.18 image has code0 = plain branch (0x14000010);
+# with CONFIG_EFI the first word becomes the "MZ" DOS trick (0x91005a4d).
+# MTK LK loads at a fixed address and does not need the stub - remove the
+# variable so the 4.9 boot header matches the only config this LK is known
+# to accept.
+# CONFIG_EFI is not set
+# ram-console / pstore DRAM addresses come from the stock DTB reserved-memory
+# nodes (mediatek,ram_console @0x43f00000, mediatek,pstore @0x43f10000) via
+# RESERVEDMEM_OF_DECLARE, so no address config is needed - they already match
+# the working 3.18 image. MTK_RAM_CONSOLE and PSTORE_RAM/CONSOLE stay enabled
+# so any text the 4.9 kernel prints lands in TWRP's /proc/last_kmsg.
