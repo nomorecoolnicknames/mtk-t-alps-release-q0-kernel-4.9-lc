@@ -42,6 +42,10 @@ ONTIM_DEBUG_DECLARE_AND_INIT(charge_ic, charge_ic, 8);
 #endif
 #define FAN5405_BUSNUM	1	/* forge m5c: charger sits on i2c1 (1-006a), not 3 */
 
+/* defined by whichever charging_hw driver is built; the fan5405 pairing
+ * lacked the definition in this tree (3.18 defines it right here too) */
+kal_bool chargin_hw_init_done = KAL_FALSE;
+
 static struct i2c_client *new_client;
 static const struct i2c_device_id fan5405_i2c_id[] = { {"fan5405", 0}, {} };
 
