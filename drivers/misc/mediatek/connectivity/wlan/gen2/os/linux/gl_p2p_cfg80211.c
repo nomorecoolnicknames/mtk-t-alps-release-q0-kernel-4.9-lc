@@ -305,7 +305,7 @@ int mtk_p2p_cfg80211_get_station(struct wiphy *wiphy, struct net_device *ndev,
 		p2pFuncGetStationInfo(prGlueInfo->prAdapter, (PUINT_8)mac, &rP2pStaInfo);
 
 		/* Inactive time. */
-		sinfo->filled |= STATION_INFO_INACTIVE_TIME;
+		sinfo->filled |= NL80211_STA_INFO_INACTIVE_TIME;
 		sinfo->inactive_time = rP2pStaInfo.u4InactiveTime;
 		sinfo->generation = prP2pGlueInfo->i4Generation;
 
@@ -388,10 +388,10 @@ int mtk_p2p_cfg80211_scan(struct wiphy *wiphy, struct cfg80211_scan_request *req
 			DBGLOG(P2P, TRACE, "Scanning Channel:%d,  freq: %d\n",
 					   prRfChannelInfo->ucChannelNum, prChannel->center_freq);
 			switch (prChannel->band) {
-			case IEEE80211_BAND_2GHZ:
+			case NL80211_BAND_2GHZ:
 				prRfChannelInfo->eBand = BAND_2G4;
 				break;
-			case IEEE80211_BAND_5GHZ:
+			case NL80211_BAND_5GHZ:
 				prRfChannelInfo->eBand = BAND_5G;
 				break;
 			default:
@@ -1104,12 +1104,14 @@ int mtk_p2p_cfg80211_change_bss(struct wiphy *wiphy, struct net_device *dev, str
 	return i4Rslt;
 }				/* mtk_p2p_cfg80211_change_bss */
 
-int mtk_p2p_cfg80211_del_station(struct wiphy *wiphy, struct net_device *dev, const u8 *mac)
+/* forge: 4.9 — del_station() takes struct station_del_parameters * */
+int mtk_p2p_cfg80211_del_station(struct wiphy *wiphy, struct net_device *dev, struct station_del_parameters *params)
 {
 	P_GLUE_INFO_T prGlueInfo = (P_GLUE_INFO_T) NULL;
 	INT_32 i4Rslt = -EINVAL;
 	P_MSG_P2P_CONNECTION_ABORT_T prDisconnectMsg = (P_MSG_P2P_CONNECTION_ABORT_T) NULL;
 	UINT_8 aucBcMac[] = BC_MAC_ADDR;
+	const u8 *mac = params ? params->mac : NULL;
 
 	do {
 		if ((wiphy == NULL) || (dev == NULL))
@@ -1441,10 +1443,10 @@ mtk_p2p_cfg80211func_channel_format_switch(IN struct ieee80211_channel *channel,
 			prRfChnlInfo->ucChannelNum = nicFreq2ChannelNum(channel->center_freq * 1000);
 
 			switch (channel->band) {
-			case IEEE80211_BAND_2GHZ:
+			case NL80211_BAND_2GHZ:
 				prRfChnlInfo->eBand = BAND_2G4;
 				break;
-			case IEEE80211_BAND_5GHZ:
+			case NL80211_BAND_5GHZ:
 				prRfChnlInfo->eBand = BAND_5G;
 				break;
 			default:

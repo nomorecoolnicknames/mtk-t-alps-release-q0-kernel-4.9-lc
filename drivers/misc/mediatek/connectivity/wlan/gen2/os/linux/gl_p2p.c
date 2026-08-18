@@ -696,7 +696,7 @@ static struct ieee80211_rate mtk_rates[] = {
 #endif
 
 static struct ieee80211_supported_band mtk_band_2ghz = {
-	.band = IEEE80211_BAND_2GHZ,
+	.band = NL80211_BAND_2GHZ,
 	.channels = mtk_2ghz_channels,
 	.n_channels = ARRAY_SIZE(mtk_2ghz_channels),
 	.bitrates = mtk_g_rates,
@@ -705,7 +705,7 @@ static struct ieee80211_supported_band mtk_band_2ghz = {
 };
 
 static struct ieee80211_supported_band mtk_band_5ghz = {
-	.band = IEEE80211_BAND_5GHZ,
+	.band = NL80211_BAND_5GHZ,
 	.channels = mtk_5ghz_a_channels,
 	.n_channels = ARRAY_SIZE(mtk_5ghz_a_channels),
 	.bitrates = mtk_a_rates,
@@ -1380,8 +1380,8 @@ BOOLEAN glP2pCreateWirelessDevice(P_GLUE_INFO_T prGlueInfo)
 	prWiphy->interface_modes = BIT(NL80211_IFTYPE_AP) | BIT(NL80211_IFTYPE_P2P_CLIENT) |
 						BIT(NL80211_IFTYPE_P2P_GO) | BIT(NL80211_IFTYPE_STATION);
 
-	prWiphy->bands[IEEE80211_BAND_2GHZ] = &mtk_band_2ghz;
-	prWiphy->bands[IEEE80211_BAND_5GHZ] = &mtk_band_5ghz;
+	prWiphy->bands[NL80211_BAND_2GHZ] = &mtk_band_2ghz;
+	prWiphy->bands[NL80211_BAND_5GHZ] = &mtk_band_5ghz;
 
 	prWiphy->mgmt_stypes = mtk_cfg80211_default_mgmt_stypes;
 	prWiphy->max_remain_on_channel_duration = 5000;
@@ -1527,7 +1527,7 @@ BOOLEAN glRegisterP2P(P_GLUE_INFO_T prGlueInfo, const char *prDevName, BOOLEAN f
 #endif
 	/*set_wiphy_dev(gprP2pWdev->wiphy, prDev);*/
 	if (!prGlueInfo->prAdapter->fgEnable5GBand)
-		gprP2pWdev->wiphy->bands[IEEE80211_BAND_5GHZ] = NULL;
+		gprP2pWdev->wiphy->bands[NL80211_BAND_5GHZ] = NULL;
 	p2pUpdateChannelTableByDomain(prGlueInfo);
 	/* 2 set priv as pointer to glue structure */
 	*(P_GLUE_INFO_T *) wiphy_priv(gprP2pWdev->wiphy) = prGlueInfo;
@@ -1786,8 +1786,12 @@ static int p2pStop(IN struct net_device *prDev)
 	}
 	GLUE_RELEASE_SPIN_LOCK(prGlueInfo, SPIN_LOCK_NET_DEV);
 
-	if (prScanRequest)
-		cfg80211_scan_done(prScanRequest, TRUE);
+	if (prScanRequest) {
+		/* forge: 4.9 — cfg80211_scan_done() takes scan_info */
+		struct cfg80211_scan_info rScanInfo = { .aborted = TRUE };
+
+		cfg80211_scan_done(prScanRequest, &rScanInfo);
+	}
 #if 0
 
 	/* 1. stop TX queue */

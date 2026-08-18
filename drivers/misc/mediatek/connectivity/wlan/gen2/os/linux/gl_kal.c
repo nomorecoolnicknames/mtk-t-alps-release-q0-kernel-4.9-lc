@@ -1683,12 +1683,12 @@ kalIndicateStatusAndComplete(IN P_GLUE_INFO_T prGlueInfo, IN WLAN_STATUS eStatus
 				prChannel =
 				    ieee80211_get_channel(priv_to_wiphy(prGlueInfo),
 							  ieee80211_channel_to_frequency(ucChannelNum,
-											 IEEE80211_BAND_2GHZ));
+											 NL80211_BAND_2GHZ));
 			} else {
 				prChannel =
 				    ieee80211_get_channel(priv_to_wiphy(prGlueInfo),
 							  ieee80211_channel_to_frequency(ucChannelNum,
-											 IEEE80211_BAND_5GHZ));
+											 NL80211_BAND_5GHZ));
 			}
 
 			/* ensure BSS exists */
@@ -1767,7 +1767,9 @@ kalIndicateStatusAndComplete(IN P_GLUE_INFO_T prGlueInfo, IN WLAN_STATUS eStatus
 			UINT_16 u2DeauthReason = prWifiVar->arBssInfo[NETWORK_TYPE_AIS_INDEX].u2DeauthReason;
 			/* CFG80211 Indication */
 			DBGLOG(AIS, INFO, "[wifi] %s cfg80211_disconnected\n", prGlueInfo->prDevHandler->name);
-			cfg80211_disconnected(prGlueInfo->prDevHandler, u2DeauthReason, NULL, 0, GFP_KERNEL);
+			/* forge: 4.9 — cfg80211_disconnected() gained locally_generated;
+			 * firmware-indicated teardown => FALSE (ath6kl/wil6210 precedent) */
+			cfg80211_disconnected(prGlueInfo->prDevHandler, u2DeauthReason, NULL, 0, FALSE, GFP_KERNEL);
 		}
 
 		prGlueInfo->eParamMediaStateIndicated = PARAM_MEDIA_STATE_DISCONNECTED;
@@ -1789,8 +1791,12 @@ kalIndicateStatusAndComplete(IN P_GLUE_INFO_T prGlueInfo, IN WLAN_STATUS eStatus
 		/* 2. then CFG80211 Indication */
 		DBGLOG(SCN, TRACE, "[ais] scan complete %p %d %d\n", prScanRequest, ScanCnt, ScanDoneFailCnt);
 
-		if (prScanRequest != NULL)
-			cfg80211_scan_done(prScanRequest, FALSE);
+		if (prScanRequest != NULL) {
+			/* forge: 4.9 — cfg80211_scan_done() takes scan_info */
+			struct cfg80211_scan_info rScanInfo = { .aborted = FALSE };
+
+			cfg80211_scan_done(prScanRequest, &rScanInfo);
+		}
 		break;
 	case WLAN_STATUS_CONNECT_INDICATION:
 		/* indicate AIS Jion fail  event
@@ -3890,10 +3896,10 @@ kalIndicateBssInfo(IN P_GLUE_INFO_T prGlueInfo,
 	/* search through channel entries */
 	if (ucChannelNum <= 14) {
 		prChannel =
-		    ieee80211_get_channel(wiphy, ieee80211_channel_to_frequency(ucChannelNum, IEEE80211_BAND_2GHZ));
+		    ieee80211_get_channel(wiphy, ieee80211_channel_to_frequency(ucChannelNum, NL80211_BAND_2GHZ));
 	} else {
 		prChannel =
-		    ieee80211_get_channel(wiphy, ieee80211_channel_to_frequency(ucChannelNum, IEEE80211_BAND_5GHZ));
+		    ieee80211_get_channel(wiphy, ieee80211_channel_to_frequency(ucChannelNum, NL80211_BAND_5GHZ));
 	}
 
 	if (prChannel != NULL && (prGlueInfo->prScanRequest != NULL || prGlueInfo->prSchedScanRequest != NULL)) {
@@ -3949,11 +3955,11 @@ kalReadyOnChannel(IN P_GLUE_INFO_T prGlueInfo,
 		if (ucChannelNum <= 14) {
 			prChannel =
 			    ieee80211_get_channel(priv_to_wiphy(prGlueInfo),
-						  ieee80211_channel_to_frequency(ucChannelNum, IEEE80211_BAND_2GHZ));
+						  ieee80211_channel_to_frequency(ucChannelNum, NL80211_BAND_2GHZ));
 		} else {
 			prChannel =
 			    ieee80211_get_channel(priv_to_wiphy(prGlueInfo),
-						  ieee80211_channel_to_frequency(ucChannelNum, IEEE80211_BAND_5GHZ));
+						  ieee80211_channel_to_frequency(ucChannelNum, NL80211_BAND_5GHZ));
 		}
 
 		switch (eSco) {
@@ -4005,11 +4011,11 @@ kalRemainOnChannelExpired(IN P_GLUE_INFO_T prGlueInfo,
 		if (ucChannelNum <= 14) {
 			prChannel =
 			    ieee80211_get_channel(priv_to_wiphy(prGlueInfo),
-						  ieee80211_channel_to_frequency(ucChannelNum, IEEE80211_BAND_2GHZ));
+						  ieee80211_channel_to_frequency(ucChannelNum, NL80211_BAND_2GHZ));
 		} else {
 			prChannel =
 			    ieee80211_get_channel(priv_to_wiphy(prGlueInfo),
-						  ieee80211_channel_to_frequency(ucChannelNum, IEEE80211_BAND_5GHZ));
+						  ieee80211_channel_to_frequency(ucChannelNum, NL80211_BAND_5GHZ));
 		}
 
 		switch (eSco) {
@@ -4187,11 +4193,10 @@ VOID kalMetProfilingStart(IN P_GLUE_INFO_T prGlueInfo, IN struct sk_buff *prSkb)
 					/* trace_printk("S|%d|%s|%d\n", current->tgid, "WIFI-CHIP", u2RtpSn);
 					//frm_sequence); */
 #ifdef CONFIG_TRACING
-					__mt_update_tracing_mark_write_addr();
-					if (tracing_mark_write_addr != 0) {
-						event_trace_printk(tracing_mark_write_addr, "S|%d|%s|%d\n",
-								   current->tgid, "WIFI-CHIP", u2RtpSn);
-					}
+					/* forge: 4.9 — event_trace_printk() is gone;
+					 * trace_printk() writes the same ftrace mark. */
+					trace_printk("S|%d|%s|%d\n",
+						     current->tgid, "WIFI-CHIP", u2RtpSn);
 #endif
 				}
 			}
@@ -4230,11 +4235,10 @@ VOID kalMetProfilingFinish(IN P_ADAPTER_T prAdapter, IN P_MSDU_INFO_T prMsduInfo
 					/* trace_printk("F|%d|%s|%d\n", current->tgid, "WIFI-CHIP", u2RtpSn);
 					//frm_sequence); */
 #ifdef CONFIG_TRACING
-					__mt_update_tracing_mark_write_addr();
-					if (tracing_mark_write_addr != 0) {
-						event_trace_printk(tracing_mark_write_addr, "F|%d|%s|%d\n",
-								   current->tgid, "WIFI-CHIP", u2RtpSn);
-					}
+					/* forge: 4.9 — event_trace_printk() is gone;
+					 * trace_printk() writes the same ftrace mark. */
+					trace_printk("F|%d|%s|%d\n",
+						     current->tgid, "WIFI-CHIP", u2RtpSn);
 #endif
 				}
 			}

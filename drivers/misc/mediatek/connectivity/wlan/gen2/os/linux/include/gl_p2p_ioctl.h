@@ -474,7 +474,7 @@ typedef struct iw_p2p_version {
 
 #define CHAN2G(_channel, _freq, _flags)             \
 {                                               \
-	.band               = IEEE80211_BAND_2GHZ,  \
+	.band               = NL80211_BAND_2GHZ,  \
 	.center_freq        = (_freq),              \
 	.hw_value           = (_channel),           \
 	.flags              = (_flags),             \
@@ -484,7 +484,7 @@ typedef struct iw_p2p_version {
 
 #define CHAN5G(_channel, _flags)                        \
 {                                                   \
-	.band               = IEEE80211_BAND_5GHZ,      \
+	.band               = NL80211_BAND_5GHZ,      \
 	.center_freq        = 5000 + (5 * (_channel)),  \
 	.hw_value           = (_channel),               \
 	.flags              = (_flags),                 \
@@ -565,7 +565,7 @@ int mtk_p2p_cfg80211_mgmt_tx(struct wiphy *wiphy,
 
 int mtk_p2p_cfg80211_stop_ap(struct wiphy *wiphy, struct net_device *dev);
 
-int mtk_p2p_cfg80211_del_station(struct wiphy *wiphy, struct net_device *dev, const u8 *mac);
+int mtk_p2p_cfg80211_del_station(struct wiphy *wiphy, struct net_device *dev, struct station_del_parameters *params);
 
 int mtk_p2p_cfg80211_set_channel(struct wiphy *wiphy, struct cfg80211_chan_def *chandef);
 

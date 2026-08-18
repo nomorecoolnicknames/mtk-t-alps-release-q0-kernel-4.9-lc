@@ -556,7 +556,9 @@ extern int allocatedMemSize;
 
 #if CFG_SUPPORT_MET_PROFILING
 #include "linux/kallsyms.h"
-#include <linux/ftrace_event.h>
+/* forge: 4.9 — <linux/ftrace_event.h> was folded into <linux/trace_events.h>;
+ * the gen2 sources only need met_drv.h (pulled in at the call sites), so the
+ * legacy include is dropped instead of replaced. */
 #endif
 
 extern BOOLEAN fgIsUnderSuspend;
@@ -845,7 +847,7 @@ BOOLEAN kalIndicateAgpsNotify(P_ADAPTER_T prAdapter, UINT_8 cmd, PUINT_8 data, U
 #define kalStrnChr(s, n, c)                           strnchr(s, n, c)
 #define kalStrLen(s)                                strlen(s)
 #define kalStrnLen(s, b)                             strnlen(s, b)
-#define kalStrniCmp(s1, s2, n)                          strnicmp(s1, s2, n)
+#define kalStrniCmp(s1, s2, n)                          strncasecmp(s1, s2, n) /* forge: 4.9 — strnicmp removed */
 /* #define kalStrtoul(cp, endp, base)                    simple_strtoul(cp, endp, base)
 #define kalStrtol(cp, endp, base)                     simple_strtol(cp, endp, base) */
 #define kalkStrtou32(cp, base, resp)                   kstrtou32(cp, base, resp)

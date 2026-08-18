@@ -398,14 +398,14 @@ int mtk_cfg80211_get_station(struct wiphy *wiphy, struct net_device *ndev, const
 		rStatus = kalIoctl(prGlueInfo,
 				wlanoidQueryLinkSpeed, &u4Rate, sizeof(u4Rate), TRUE, FALSE, FALSE, FALSE, &u4BufLen);
 
-		sinfo->filled |= STATION_INFO_TX_BITRATE;
+		sinfo->filled |= NL80211_STA_INFO_TX_BITRATE;
 
 		if ((rStatus != WLAN_STATUS_SUCCESS) || (u4Rate == 0)) {
 			/* DBGLOG(REQ, WARN, "unable to retrieve link speed\n")); */
 			DBGLOG(REQ, WARN, "last link speed\n");
 			sinfo->txrate.legacy = prGlueInfo->u4LinkSpeedCache;
 		} else {
-			/* sinfo->filled |= STATION_INFO_TX_BITRATE; */
+			/* sinfo->filled |= NL80211_STA_INFO_TX_BITRATE; */
 			sinfo->txrate.legacy = u4Rate / 1000;	/* convert from 100bps to 100kbps */
 			prGlueInfo->u4LinkSpeedCache = u4Rate / 1000;
 		}
@@ -419,7 +419,7 @@ int mtk_cfg80211_get_station(struct wiphy *wiphy, struct net_device *ndev, const
 		rStatus = kalIoctl(prGlueInfo,
 				   wlanoidQueryRssi, &i4Rssi, sizeof(i4Rssi), TRUE, FALSE, FALSE, FALSE, &u4BufLen);
 
-		sinfo->filled |= STATION_INFO_SIGNAL;
+		sinfo->filled |= NL80211_STA_INFO_SIGNAL;
 
 		if (rStatus != WLAN_STATUS_SUCCESS || (i4Rssi == PARAM_WHQL_RSSI_MIN_DBM)
 		|| (i4Rssi == PARAM_WHQL_RSSI_MAX_DBM)) {
@@ -435,8 +435,8 @@ int mtk_cfg80211_get_station(struct wiphy *wiphy, struct net_device *ndev, const
 
 		/* 4. Fill Tx OK and Tx Bad */
 
-		sinfo->filled |= STATION_INFO_TX_PACKETS;
-		sinfo->filled |= STATION_INFO_TX_FAILED;
+		sinfo->filled |= NL80211_STA_INFO_TX_PACKETS;
+		sinfo->filled |= NL80211_STA_INFO_TX_FAILED;
 		{
 			WLAN_STATUS rStatus;
 
@@ -723,7 +723,8 @@ int mtk_cfg80211_add_station(struct wiphy *wiphy, struct net_device *ndev,
  *		must implement if you have add_station().
  */
 /*----------------------------------------------------------------------------*/
-int mtk_cfg80211_del_station(struct wiphy *wiphy, struct net_device *ndev, const u8 *mac)
+/* forge: 4.9 — del_station() takes struct station_del_parameters * */
+int mtk_cfg80211_del_station(struct wiphy *wiphy, struct net_device *ndev, struct station_del_parameters *params)
 {
 	return 0;
 }
@@ -1472,10 +1473,10 @@ int mtk_cfg80211_remain_on_channel(struct wiphy *wiphy,
 		prMsgChnlReq->ucChannelNum = nicFreq2ChannelNum(chan->center_freq * 1000);
 
 		switch (chan->band) {
-		case IEEE80211_BAND_2GHZ:
+		case NL80211_BAND_2GHZ:
 			prMsgChnlReq->eBand = BAND_2G4;
 			break;
-		case IEEE80211_BAND_5GHZ:
+		case NL80211_BAND_5GHZ:
 			prMsgChnlReq->eBand = BAND_5G;
 			break;
 		default:
@@ -1707,7 +1708,10 @@ mtk_cfg80211_sched_scan_start(IN struct wiphy *wiphy,
 	if (request->ie_len > 0)
 		prSchedScanRequest->pucIE = (PUINT_8) (request->ie);
 
-	prSchedScanRequest->u2ScanInterval = (UINT_16) (request->interval);
+	/* forge: 4.9 — cfg80211_sched_scan_request.interval was replaced by
+	 * scan_plans[]; use the first plan's interval (seconds) as before. */
+	prSchedScanRequest->u2ScanInterval = (UINT_16)
+		(request->n_scan_plans > 0 ? request->scan_plans[0].interval : 0);
 
 	rStatus = kalIoctl(prGlueInfo,
 			   wlanoidSetStartSchedScan,

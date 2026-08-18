@@ -901,12 +901,14 @@ VOID kalP2PIndicateScanDone(IN P_GLUE_INFO_T prGlueInfo, IN BOOLEAN fgIsAbort)
 		/* 2. then CFG80211 Indication */
 
 		if (prScanRequest != NULL) {
+			/* forge: 4.9 — cfg80211_scan_done() takes scan_info */
+			struct cfg80211_scan_info rScanInfo = { .aborted = fgIsAbort ? TRUE : FALSE };
 
 			/* report all queued beacon/probe response frames  to upper layer */
 			scanReportBss2Cfg80211(prGlueInfo->prAdapter, BSS_TYPE_P2P_DEVICE, NULL);
 
 			DBGLOG(INIT, TRACE, "DBG:p2p_cfg_scan_done\n");
-			cfg80211_scan_done(prScanRequest, fgIsAbort);
+			cfg80211_scan_done(prScanRequest, &rScanInfo);
 		}
 
 	} while (FALSE);
@@ -1059,8 +1061,9 @@ kalP2PGCIndicateConnectionStatus(IN P_GLUE_INFO_T prGlueInfo,
 			prP2pConnInfo->fgIsConnRequest = FALSE;
 		} else {
 			/* Disconnect, what if u2StatusReason == 0? */
+			/* forge: 4.9 — cfg80211_disconnected() gained locally_generated */
 			cfg80211_disconnected(prGlueP2pInfo->prDevHandler,	/* struct net_device * dev, */
-					      u2StatusReason, pucRxIEBuf, u2RxIELen, GFP_KERNEL);
+					      u2StatusReason, pucRxIEBuf, u2RxIELen, FALSE, GFP_KERNEL);
 		}
 
 	} while (FALSE);
@@ -1079,12 +1082,14 @@ VOID kalP2PGOStationUpdate(IN P_GLUE_INFO_T prGlueInfo, IN P_STA_RECORD_T prCliS
 		prP2pGlueInfo = prGlueInfo->prP2PInfo;
 
 		if (fgIsNew) {
-			rStationInfo.filled = STATION_INFO_ASSOC_REQ_IES;
+			/* forge: 4.9 — NL80211_STA_INFO_ASSOC_REQ_IES bit is gone;
+			 * cfg80211_new_sta() consumes assoc_req_ies unconditionally */
+			rStationInfo.filled = 0;
 			rStationInfo.generation = ++prP2pGlueInfo->i4Generation;
 
 			rStationInfo.assoc_req_ies = prCliStaRec->pucAssocReqIe;
 			rStationInfo.assoc_req_ies_len = prCliStaRec->u2AssocReqIeLen;
-/* rStationInfo.filled |= STATION_INFO_ASSOC_REQ_IES; */
+/* rStationInfo.filled |= NL80211_STA_INFO_ASSOC_REQ_IES; */
 
 			cfg80211_new_sta(prGlueInfo->prP2PInfo->prDevHandler,	/* struct net_device * dev, */
 					 prCliStaRec->aucMacAddr, &rStationInfo, GFP_KERNEL);
@@ -1144,12 +1149,12 @@ struct ieee80211_channel *kalP2pFuncGetChannelEntry(IN P_GL_P2P_INFO_T prP2pInfo
 		bands = &prP2pInfo->prWdev->wiphy->bands[0];
 		switch (prChannelInfo->eBand) {
 		case BAND_2G4:
-			prTargetChannelEntry = bands[IEEE80211_BAND_2GHZ]->channels;
-			u4TblSize = bands[IEEE80211_BAND_2GHZ]->n_channels;
+			prTargetChannelEntry = bands[NL80211_BAND_2GHZ]->channels;
+			u4TblSize = bands[NL80211_BAND_2GHZ]->n_channels;
 			break;
 		case BAND_5G:
-			prTargetChannelEntry = bands[IEEE80211_BAND_5GHZ]->channels;
-			u4TblSize = bands[IEEE80211_BAND_5GHZ]->n_channels;
+			prTargetChannelEntry = bands[NL80211_BAND_5GHZ]->channels;
+			u4TblSize = bands[NL80211_BAND_5GHZ]->n_channels;
 			break;
 		default:
 			break;

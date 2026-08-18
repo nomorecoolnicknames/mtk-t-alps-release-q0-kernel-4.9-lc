@@ -969,7 +969,7 @@ int mtk_cfg80211_vendor_event_complete_scan(struct wiphy *wiphy, struct wireless
 
 	DBGLOG(REQ, INFO, "%s for vendor command \r\n", __func__);
 
-	skb = cfg80211_vendor_event_alloc(wiphy, sizeof(complete), GSCAN_EVENT_COMPLETE_SCAN, GFP_KERNEL);
+	skb = cfg80211_vendor_event_alloc(wiphy, NULL, /* forge: 4.9 wdev arg */ sizeof(complete), GSCAN_EVENT_COMPLETE_SCAN, GFP_KERNEL);
 	if (!skb) {
 		DBGLOG(REQ, ERROR, "%s allocate skb failed\n", __func__);
 		return -ENOMEM;
@@ -1002,7 +1002,7 @@ int mtk_cfg80211_vendor_event_scan_results_available(struct wiphy *wiphy, struct
 
 	DBGLOG(REQ, INFO, "%s for vendor command %d  \r\n", __func__, num);
 
-	skb = cfg80211_vendor_event_alloc(wiphy, sizeof(num), GSCAN_EVENT_SCAN_RESULTS_AVAILABLE, GFP_KERNEL);
+	skb = cfg80211_vendor_event_alloc(wiphy, NULL, /* forge: 4.9 wdev arg */ sizeof(num), GSCAN_EVENT_SCAN_RESULTS_AVAILABLE, GFP_KERNEL);
 	if (!skb) {
 		DBGLOG(REQ, ERROR, "%s allocate skb failed\n", __func__);
 		return -ENOMEM;
@@ -1035,7 +1035,7 @@ int mtk_cfg80211_vendor_event_full_scan_results(struct wiphy *wiphy, struct wire
 	ASSERT(wdev);
 	DBGLOG(REQ, INFO, "%s for vendor command \r\n", __func__);
 
-	skb = cfg80211_vendor_event_alloc(wiphy, sizeof(result), GSCAN_EVENT_FULL_SCAN_RESULTS, GFP_KERNEL);
+	skb = cfg80211_vendor_event_alloc(wiphy, NULL, /* forge: 4.9 wdev arg */ sizeof(result), GSCAN_EVENT_FULL_SCAN_RESULTS, GFP_KERNEL);
 	if (!skb) {
 		DBGLOG(REQ, ERROR, "%s allocate skb failed\n", __func__);
 		return -ENOMEM;
@@ -1069,7 +1069,7 @@ int mtk_cfg80211_vendor_event_significant_change_results(struct wiphy *wiphy, st
 	ASSERT(wdev);
 	DBGLOG(REQ, INFO, "%s for vendor command \r\n", __func__);
 
-	skb = cfg80211_vendor_event_alloc(wiphy, sizeof(PARAM_WIFI_CHANGE_RESULT),
+	skb = cfg80211_vendor_event_alloc(wiphy, NULL, /* forge: 4.9 wdev arg */ sizeof(PARAM_WIFI_CHANGE_RESULT),
 					  GSCAN_EVENT_SIGNIFICANT_CHANGE_RESULTS, GFP_KERNEL);
 	if (!skb) {
 		DBGLOG(REQ, ERROR, "%s allocate skb failed\n", __func__);
@@ -1110,7 +1110,7 @@ int mtk_cfg80211_vendor_event_hotlist_ap_found(struct wiphy *wiphy, struct wirel
 	ASSERT(wdev);
 	DBGLOG(REQ, INFO, "%s for vendor command \r\n", __func__);
 
-	skb = cfg80211_vendor_event_alloc(wiphy, sizeof(PARAM_WIFI_GSCAN_RESULT),
+	skb = cfg80211_vendor_event_alloc(wiphy, NULL, /* forge: 4.9 wdev arg */ sizeof(PARAM_WIFI_GSCAN_RESULT),
 					  GSCAN_EVENT_HOTLIST_RESULTS_FOUND, GFP_KERNEL);
 	if (!skb) {
 		DBGLOG(REQ, ERROR, "%s allocate skb failed\n", __func__);
@@ -1149,7 +1149,7 @@ int mtk_cfg80211_vendor_event_hotlist_ap_lost(struct wiphy *wiphy, struct wirele
 	ASSERT(wdev);
 	DBGLOG(REQ, INFO, "%s for vendor command \r\n", __func__);
 
-	skb = cfg80211_vendor_event_alloc(wiphy, sizeof(PARAM_WIFI_GSCAN_RESULT),
+	skb = cfg80211_vendor_event_alloc(wiphy, NULL, /* forge: 4.9 wdev arg */ sizeof(PARAM_WIFI_GSCAN_RESULT),
 					  GSCAN_EVENT_HOTLIST_RESULTS_LOST, GFP_KERNEL);
 	if (!skb) {
 		DBGLOG(REQ, ERROR, "%s allocate skb failed\n", __func__);
