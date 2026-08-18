@@ -101,7 +101,11 @@
 /* MTK GPU DVFS */
 #include <mali_kbase_pm.h>
 #ifdef ENABLE_COMMON_DVFS
+#ifdef CONFIG_MACH_MT6735M
+#include <mt_gpufreq.h>
+#else
 #include <mtk_gpufreq.h>
+#endif
 #endif
 #include <mali_kbase_pm_defs.h>
 #include <mali_kbase_pm_internal.h>
