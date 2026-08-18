@@ -114,3 +114,51 @@ wmt wifi power-on ioctl path vs 4.9; P2P interface creation; sched-scan
 interval semantics (3.18 interval units vs 4.9 scan_plans seconds);
 wakeup_source shim behaviour under suspend (wake_lock_timeout jiffies->
 msecs conversion).
+
+## Phase H-3: FM radio (mt6627-variant) port — 2026-08-18
+
+Commit: 7be1cca09 "fmradio: port mt6627 fm driver from 3.18"
+
+FACT (3.18 recon): stock .config builds fmradio with
+CONFIG_MTK_FMRADIO=y, CONFIG_MTK_FM=y, CONFIG_MTK_FM_SUPPORT=y,
+CONFIG_MTK_FM_CHIP="MT6625_FM"; the 3.18 fmradio/Makefile maps
+MT6625_FM onto the mt6627 code path (-DMT6627_FM -DMT6625_FM,
+mt6627/pub/* objects). So the "MT6627 FM config" dmesg line and the
+MT6625_FM config name are the SAME driver — no contradiction. FM on
+m5c is the MT6627-compatible block inside consys SOC 0x0335, reached
+only via wmt/stp (no combo-chip SDIO path involved).
+
+Port shape: verbatim import of drivers/misc/mediatek/fmradio/ (46
+files, core+inc+mt6627+mt6630) minus build artifacts; exactly ONE 4.9
+adaptation — fm_module.c fm_ops_ioctl: filp->f_dentry->d_inode ->
+file_inode(filp). No wakelock/PDE_DATA/create_proc_entry/misc/timer
+issues exist in this driver (grep-verified pre-import). Build wiring:
+obj-$(CONFIG_MTK_FMRADIO) in mediatek/Makefile, source fmradio/Kconfig
+in mediatek/Kconfig (CONN menu). fm_drv_init.c (conn_soc
+common_detect/drv_init) needed NO edit: it calls mtk_wcn_fm_init()
+under CONFIG_MTK_FMRADIO and the ported driver exports that symbol
+(MTK_WCN_REMOVE_KERNEL_MODULE path) — H-1 bridge closed, FACT via
+System.map (T mtk_wcn_fm_init / T mtk_wcn_fm_exit).
+
+Char-device ABI (same source as 3.18 => identical): /dev/fm char dev
+"fm", dynamic major (alloc_chrdev_region + class_create/device_create),
+/proc/fm, ioctl magic 0xf5 cmds 0..49, compat_ioctl for 32-bit
+userspace.
+
+CONFIG list (worktree .config; main defconfig NOT touched):
+  CONFIG_MTK_FMRADIO=y, CONFIG_MTK_FM=y, CONFIG_MTK_FM_SUPPORT=y,
+  CONFIG_MTK_FM_CHIP="MT6625_FM" (exactly the 3.18 set).
+
+Build: full Image.gz-dtb 0 errors, log
+k49-worktrees/conn49-logs/full-build-fm-1.log (subdir iterations
+fm-subdir-1..3.log). vmlinux strings: mtk_wcn_fm_init/exit,
+"[FM-MOD-INIT]", "MT6627 FM cust/default config". modpost reports 4
+section mismatches — pre-existing from H-1/H-2 connectivity/wlan, not
+fmradio (fmradio objects add none; verified in fm-subdir-3.log with 0
+warnings).
+
+Runtime risks (untested, no flash): wmt func_on(FM) path on real
+consys firmware; /dev/fm vs LOS14.1 userspace (fmradio.driver.enable=0
+by default — driver registers but stays off, same as 3.18); FM antenna
+EINT is a no-op stub in this variant (fm_eint.c returns 0, events come
+via stp event cb — same as 3.18, not a regression).
