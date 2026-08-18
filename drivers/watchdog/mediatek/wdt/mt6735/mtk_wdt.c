@@ -41,6 +41,24 @@
 #include <mt-plat/sync_write.h>
 #include <ext_wd_drv.h>
 
+#ifdef CONFIG_MTK_WDT_DIAG_HARD
+/* FORGE m5c p29 deadman v2: keep the v1 semantics (never kick -> any
+ * wedge warm-resets with DRAM intact), plus auto-land in recovery: at
+ * ~3 s (alive then; the wedge hits ~4.6 s) set the RTC FAC_RESET spare
+ * bit so the WDT reset makes LK boot TWRP hands-free (same mechanism as
+ * "reboot recovery", wd_api.c:679). Never cleared in this build: every
+ * wedged boot lands in TWRP; LK/TWRP consume the bit on the way. */
+#include <linux/workqueue.h>
+extern void rtc_forge_mark_recovery(int on);
+static void forge_mark_recovery_work(struct work_struct *work);
+static DECLARE_DELAYED_WORK(forge_mark_recovery_wk, forge_mark_recovery_work);
+static void forge_mark_recovery_work(struct work_struct *work)
+{
+	rtc_forge_mark_recovery(1);
+	pr_info("FORGE deadman: recovery boot-mode marked (RTC FAC_RESET)\n");
+}
+#endif
+
 #include <mach/wd_api.h>
 #ifdef CONFIG_MTK_MULTIBRIDGE_SUPPORT
 #include <mt8193_ckgen.h>
@@ -709,6 +727,8 @@ static int mtk_wdt_probe(struct platform_device *dev)
 	 * off), and nothing will kick it. */
 	pr_info("mtk_wdt_probe : DIAG_HARD deadman, plain reset mode\n");
 	mtk_wdt_mode_config(FALSE, FALSE, TRUE, FALSE, TRUE);
+	/* p29: auto-land in TWRP after the wedge (see top of file) */
+	schedule_delayed_work(&forge_mark_recovery_wk, 3 * HZ);
     #elif defined(CONFIG_MTK_WD_KICKER)	/* Initialize to dual mode */
 	pr_debug("mtk_wdt_probe : Initialize to dual mode\n");
 	mtk_wdt_mode_config(TRUE, TRUE, TRUE, FALSE, TRUE);
