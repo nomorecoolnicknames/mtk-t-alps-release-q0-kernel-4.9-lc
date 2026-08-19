@@ -42,20 +42,57 @@
 #include <ext_wd_drv.h>
 
 #ifdef CONFIG_MTK_WDT_DIAG_HARD
-/* FORGE m5c p29 deadman v2: keep the v1 semantics (never kick -> any
- * wedge warm-resets with DRAM intact), plus auto-land in recovery: at
- * ~3 s (alive then; the wedge hits ~4.6 s) set the RTC FAC_RESET spare
- * bit so the WDT reset makes LK boot TWRP hands-free (same mechanism as
- * "reboot recovery", wd_api.c:679). Never cleared in this build: every
- * wedged boot lands in TWRP; LK/TWRP consume the bit on the way. */
+/* FORGE m5c p30 deadman v2: an own kthread kicks the WDT every second,
+ * so a HEALTHY boot survives (v1 never kicked -> even a fixed kernel
+ * would reset at the LK window). Auto-recovery attempt: at ~3 s (alive
+ * then; the wedge hits ~4.6 s) set the RTC FAC_RESET spare bit so a WDT
+ * reset should make LK boot TWRP (same mechanism as "reboot recovery",
+ * wd_api.c:679); at 15 s (past the wedge window = healthy) clear it and
+ * keep kicking forever. A total freeze kills this thread -> kicks stop
+ * -> WDT fires -> TWRP. A partial freeze with this thread surviving
+ * still needs the manual Vol+ catch (accepted fallback).
+ *
+ * NOTE (p29 fact): the mark printed but LK did NOT route to recovery on
+ * its own — the bit may not be honored by this LK on WDT resets. The
+ * manual warm Vol+ catch remains the reliable path. */
 #include <linux/workqueue.h>
+#include <linux/kthread.h>
+#include <linux/sched.h>	/* sched_clock() */
 extern void rtc_forge_mark_recovery(int on);
-static void forge_mark_recovery_work(struct work_struct *work);
-static DECLARE_DELAYED_WORK(forge_mark_recovery_wk, forge_mark_recovery_work);
-static void forge_mark_recovery_work(struct work_struct *work)
+extern void forge_kmark_ptr(int ms, unsigned long v);
+extern void __iomem *toprgu_base;	/* defined below (line ~96) */
+
+static int forge_deadman_fn(void *arg)
 {
-	rtc_forge_mark_recovery(1);
-	pr_info("FORGE deadman: recovery boot-mode marked (RTC FAC_RESET)\n");
+	int marked = 0, loops = 0;
+
+	while (!kthread_should_stop()) {
+		u64 now_s = div_u64(sched_clock(), 1000000000);
+
+		if (!marked && now_s >= 3) {
+			rtc_forge_mark_recovery(1);
+			marked = 1;
+			pr_info("FORGE deadman: recovery boot-mode marked (RTC FAC_RESET)\n");
+		}
+		/* p31: no deadline — a healthy boot must survive to adb.
+		 * Past 15 s = past the wedge window -> clear the recovery mark
+		 * so the next manual reboot lands in Android, and keep kicking
+		 * forever. If the box freezes, this thread dies too -> kicks
+		 * stop -> WDT fires -> warm reset; the mark is still set only
+		 * when the freeze hit inside the 3..15 s window. */
+		if (marked == 1 && now_s >= 15) {
+			rtc_forge_mark_recovery(0);
+			marked = 2;
+			pr_info("FORGE deadman: healthy window passed, recovery mark cleared\n");
+		}
+		mt_reg_sync_writel(MTK_WDT_RESTART_KEY, MTK_WDT_RESTART);
+		forge_kmark_ptr(95, (u64)(++loops) | (now_s << 32));
+		msleep(1000);
+	}
+	/* park: never kick again */
+	while (!kthread_should_stop())
+		msleep(5000);
+	return 0;
 }
 #endif
 
@@ -725,10 +762,10 @@ static int mtk_wdt_probe(struct platform_device *dev)
 	/* m5c bring-up deadman: plain reset mode like LK's arming - no
 	 * dual/IRQ stage (an IRQ-stage WDT cannot fire with IRQs wedged
 	 * off), and nothing will kick it. */
-	pr_info("mtk_wdt_probe : DIAG_HARD deadman, plain reset mode\n");
+	pr_info("mtk_wdt_probe : DIAG_HARD deadman v2 (kick thread + recovery mark)\n");
 	mtk_wdt_mode_config(FALSE, FALSE, TRUE, FALSE, TRUE);
-	/* p29: auto-land in TWRP after the wedge (see top of file) */
-	schedule_delayed_work(&forge_mark_recovery_wk, 3 * HZ);
+	/* p30: own kicker thread + recovery auto-mark (see top of file) */
+	kthread_run(forge_deadman_fn, NULL, "forge_deadman");
     #elif defined(CONFIG_MTK_WD_KICKER)	/* Initialize to dual mode */
 	pr_debug("mtk_wdt_probe : Initialize to dual mode\n");
 	mtk_wdt_mode_config(TRUE, TRUE, TRUE, FALSE, TRUE);

@@ -30,6 +30,11 @@
 
 /* Add for HW/SW connect */
 #include "mtk_gadget.h"
+
+/* forge: fwd decl — defined later in this file, called from the f_*
+ * sources #included below (f_mtp.c, f_midi.c). */
+static struct device *android_lookup_function_device(char *name);
+
 /* Add for HW/SW connect */
 
 #include "u_fs.h"
@@ -49,7 +54,12 @@
 #include "f_rndis.c"
 /* note ERROR macro both appear on cdev & u_ether, make sure what you want */
 #include "rndis.c"
-#include "u_ether.c"
+/* forge: u_ether.c is NOT #included here (unlike the 3.18-style gadget):
+ * the 4.9 tree links it standalone (obj-$(CONFIG_USB_U_ETHER)) and its
+ * gether_* are EXPORT_SYMBOL_GPL'd; including it here double-defines
+ * rndis_test_* and friends at link time. */
+#include "u_ether.h"
+#include "u_ether_configfs.h"
 
 USB_ETHERNET_MODULE_PARAMETERS();
 
@@ -942,59 +952,10 @@ static int mtp_function_ctrlrequest(struct android_usb_function *f,
 	return mtp_ctrlrequest(cdev, c);
 }
 
-static int cpumask_to_int(const struct cpumask *cpu_mask)
-{
-	int mask = 0;
-	int cpu;
-
-	for_each_cpu(cpu, cpu_mask) {
-		pr_debug("[USB]%d\n", cpu);
-		mask |= (1 << cpu);
-	}
-
-	return mask;
-}
-
-static ssize_t cpu_mask_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct cpumask *cpu_mask = mtp_get_cpu_mask();
-
-	return sprintf(buf, "0x%X\n", (cpu_mask?cpumask_to_int(cpu_mask):0xFFFFFFFF));
-}
-
-static ssize_t cpu_mask_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t size)
-{
-	unsigned int mask;
-
-	if (kstrtouint(buf, 16, &mask) != 0)
-		return -EINVAL;
-
-	pr_info("Store => 0x%x\n", mask);
-
-	mtp_set_cpu_mask(mask);
-
-	return size;
-}
-
-static DEVICE_ATTR(cpu_mask, S_IRUGO | S_IWUSR, cpu_mask_show,
-					       cpu_mask_store);
-
-static ssize_t mtp_server_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", mtp_get_mtp_server());
-}
-
-static DEVICE_ATTR(mtp_server, S_IRUGO, mtp_server_show,
-					       NULL);
-
-static struct device_attribute *mtp_function_attributes[] = {
-	&dev_attr_cpu_mask,
-	&dev_attr_mtp_server,
-	NULL
-};
+/* forge: the mtp attribute glue (cpumask_to_int, cpu_mask_show/store,
+ * mtp_server_show, mtp_function_attributes) used to be duplicated here;
+ * f_mtp.c — #included at the top of this file — carries the identical
+ * canonical set, and mtp_function.attributes below resolves to it. */
 
 static struct android_usb_function mtp_function = {
 	.name		= "mtp",
@@ -1874,7 +1835,11 @@ static struct android_usb_function *supported_functions[] = {
 	NULL
 };
 
-struct device *create_function_device(char *name)
+/* forge: renamed from create_function_device — configfs.c exports a
+ * same-named but DIFFERENT function (creates a new device; this one
+ * looks up an existing function device by name). Callers are the f_*
+ * files #included into this TU (f_mtp/f_midi). */
+static struct device *android_lookup_function_device(char *name)
 {
 	struct android_dev *dev = _android_dev;
 	struct android_usb_function **functions;
@@ -2603,7 +2568,7 @@ static void do_android_usb_state_monitor_work(struct work_struct *work)
 	pr_warn("usb_state<%s>\n", usb_state);
 	schedule_delayed_work(&android_usb_state_monitor_work, msecs_to_jiffies(USB_STATE_MONITOR_DELAY));
 }
-void trigger_android_usb_state_monitor_work(void)
+static void trigger_android_usb_state_monitor_work(void)  /* forge: static — meta.c defines a same-named global */
 {
 	static int inited;
 

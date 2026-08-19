@@ -2084,7 +2084,10 @@ static void mtp_function_disable(struct usb_function *f)
 }
 
 #ifdef CONFIG_USB_G_ANDROID
-static int mtp_bind_config(struct usb_configuration *c,
+/* forge: __maybe_unused — this file is also compiled standalone
+ * (usb_f_mtp.o, configfs) where the legacy-gadget entry points below
+ * are unreferenced; only android.c's translation unit calls them. */
+static int __maybe_unused mtp_bind_config(struct usb_configuration *c,
 					  bool ptp_config)
 {
 	struct mtp_dev *dev = _mtp_dev;
@@ -2173,7 +2176,7 @@ err1:
 }
 
 #ifdef CONFIG_USB_G_ANDROID
-static int mtp_setup(void)
+static int __maybe_unused mtp_setup(void)
 {
 	return __mtp_setup(NULL);
 }
@@ -2358,7 +2361,7 @@ struct usb_function_instance *alloc_inst_mtp_ptp(bool mtp_config)
 					descs, names, THIS_MODULE);
 #ifdef CONFIG_USB_CONFIGFS_UEVENT
 	if (mtp_config) {
-		dev = create_function_device("f_mtp");
+		dev = android_lookup_function_device("f_mtp");
 
 		if (IS_ERR(dev)) {
 			kfree(fi_mtp);

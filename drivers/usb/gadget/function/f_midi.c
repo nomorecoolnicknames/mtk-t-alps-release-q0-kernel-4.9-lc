@@ -1335,7 +1335,8 @@ static void f_midi_free_inst(struct usb_function_instance *f)
 }
 
 #ifdef CONFIG_USB_CONFIGFS_UEVENT
-extern struct device *create_function_device(char *name);
+/* forge: android_lookup_function_device is static in android.c,
+   same TU via #include — no extern needed. */
 static ssize_t alsa_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -1370,7 +1371,7 @@ static int create_alsa_device(struct usb_function_instance *fi)
 	struct device_attribute *attr;
 	int err = 0;
 
-	dev = create_function_device("f_midi");
+	dev = android_lookup_function_device("f_midi");
 	if (IS_ERR(dev))
 		return PTR_ERR(dev);
 
