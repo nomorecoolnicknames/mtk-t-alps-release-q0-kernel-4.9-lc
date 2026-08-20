@@ -360,6 +360,25 @@ static void lcm_get_params(LCM_PARAMS *params)
 
 	params->width  = FRAME_WIDTH;
 	params->height = FRAME_HEIGHT;
+	/* forge (m5c): DSI parameters below are taken from the stock kernel's
+	 * ili9881c_lcm_get_params (0xffffffc0004e5014). Offsets were decoded
+	 * against this tree's LCM_PARAMS layout with a host offsetof probe:
+	 *   type=2 width=720 height=1280 dsi.mode=1(SYNC_PULSE_VDO)
+	 *   LANE_NUM=4  PS=2  format=2
+	 *   vsa=4 vbp=16 vfp=20 vact=1280
+	 *   hsa=20 hbp=70 hfp=70 hact=720
+	 *   PLL_CLOCK=212  ssc_disable=1  HS_TRAIL=6
+	 *   esd_check_enable=1 customization_esd_check_enable=1
+	 *   esd table[0] = {0x0a, 1, {0x9c}}
+	 *   physical size 62 x 110 mm
+	 * This matters only on resume: at boot LK programs the DSI host and the
+	 * kernel keeps that configuration, but on resume the kernel reprograms it
+	 * from here. The hand-reversed values (3 lanes, PLL 285, hsa 60, hbp 80,
+	 * vbp 18, vfp 10) gave the wrong bit clock and timing, so the panel
+	 * displayed random noise after every screen off/on.
+	 */
+	params->physical_width  = 62;
+	params->physical_height = 110;
 
 
 #if (LCM_DSI_CMD_MODE)
@@ -371,7 +390,7 @@ static void lcm_get_params(LCM_PARAMS *params)
 	// DSI
 	/* Command mode setting */
 	//1 Three lane or Four lane
-		params->dsi.LANE_NUM				= LCM_THREE_LANE;
+		params->dsi.LANE_NUM				= LCM_FOUR_LANE;	/* forge: stock sets 4 */
 	//The following defined the fomat for data coming from LCD engine.
 	params->dsi.data_format.format      = LCM_DSI_FORMAT_RGB888;
 
@@ -379,15 +398,15 @@ static void lcm_get_params(LCM_PARAMS *params)
 	params->dsi.PS=LCM_PACKED_PS_24BIT_RGB888;
 		
 		params->dsi.vertical_sync_active				= 4;// 3    2  8
-		params->dsi.vertical_backporch					= 18;// 20   1  18
-		params->dsi.vertical_frontporch					= 10; // 1  12
+		params->dsi.vertical_backporch					= 16;	/* forge: stock */
+		params->dsi.vertical_frontporch					= 20;	/* forge: stock */
 		params->dsi.vertical_active_line				= FRAME_HEIGHT; 
 
-		params->dsi.horizontal_sync_active				= 60;// 50  2
-		params->dsi.horizontal_backporch				= 80;//50;//90  60
+		params->dsi.horizontal_sync_active				= 20;	/* forge: stock */
+		params->dsi.horizontal_backporch				= 70;	/* forge: stock */
 		params->dsi.horizontal_frontporch				= 70;//50;//90  70
 		params->dsi.horizontal_active_pixel				= FRAME_WIDTH;
-		params->dsi.ssc_disable                         = 0;
+		params->dsi.ssc_disable                         = 1;	/* forge: stock */
 		params->dsi.ssc_range                           = 6;
 		params->dsi.HS_TRAIL                             = 6;//16
 		/*ui = 1000/(dis_params->PLL_CLOCK*2) + 0x01; 
@@ -399,7 +418,7 @@ static void lcm_get_params(LCM_PARAMS *params)
 		//1 Every lane speed
 		//params->dsi.pll_select=1;
 		//params->dsi.PLL_CLOCK  = LCM_DSI_6589_PLL_CLOCK_377;
-		params->dsi.PLL_CLOCK=285;//208//270
+		params->dsi.PLL_CLOCK=212;	/* forge: stock (was 285 -> wrong DSI bit clock) */
 
 		//params->dsi.noncont_clock=1;
 		//params->dsi.noncont_clock_period=2;

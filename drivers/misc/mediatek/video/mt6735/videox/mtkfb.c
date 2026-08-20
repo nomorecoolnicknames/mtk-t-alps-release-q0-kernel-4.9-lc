@@ -52,6 +52,9 @@
 #include "ddp_hal.h"
 #include "disp_lcm.h"
 #include "mtkfb.h"
+#ifdef CONFIG_COMPAT
+#include "compat_mtkfb.h"	/* forge p44: Q0 dropped the mt6735 copy */
+#endif
 #include "mtkfb_console.h"
 #include "mtkfb_fence.h"
 #include "mtkfb_info.h"

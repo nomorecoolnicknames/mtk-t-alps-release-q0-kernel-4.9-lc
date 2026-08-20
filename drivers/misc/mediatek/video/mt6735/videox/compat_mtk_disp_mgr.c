@@ -12,6 +12,7 @@
  */
 
 #include "compat_mtk_disp_mgr.h"
+#include "disp_drv_log.h"	/* forge p44: DISPDBG/DISPERR */
 
 #include "mtk_sync.h"
 
