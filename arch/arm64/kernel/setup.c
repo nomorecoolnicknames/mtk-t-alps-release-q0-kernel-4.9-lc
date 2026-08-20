@@ -289,6 +289,30 @@ void forge_kmark(int ms)
 	}
 }
 
+/*
+ * forge_preserve_prev (p37): copy the previous boot's marker slots (bytes
+ * 0..1023 of each page) into bytes 1024..2047 of the SAME page, before this
+ * boot re-stamps them. In a reset loop every cycle overwrites the live
+ * slots; the copy keeps the dying boot's full history readable from TWRP
+ * (dd count=2) and mirrorable to expdb. head.S has already stamped slots
+ * 1-4 of the current boot by now — acceptable loss, everything from the
+ * ~5s window onward is still the previous boot's.
+ */
+static void __init forge_preserve_prev(void)
+{
+	unsigned long bases[2] = { FORGE_A, FORGE_B };
+	int i;
+
+	for (i = 0; i < 2; i++) {
+		void *p = phys_to_virt(bases[i]);
+
+		if (*(u32 *)p != 0x47524f46)	/* no "FORG" magic: cold boot */
+			continue;
+		memcpy(p + 1024, p, 1024);
+		__flush_dcache_area(p, 2048);
+	}
+}
+
 /* Like forge_kmark but the slot carries an arbitrary value (e.g. the
  * address of the initcall about to run); decode with the build's
  * System.map. */
@@ -341,10 +365,21 @@ void __init setup_arch(char **cmdline_p)
 	xen_early_init();
 	efi_init();
 	arm64_memblock_init();
+	/* FORGE p37: the marker pages, the debug ram console window and the
+	 * debug pstore window are plain free DRAM as far as the allocator is
+	 * concerned (the stock DTB memory node ends at 0x5f000000, but LK
+	 * hands us the real 2GB, so they all sit in the linear map). Without
+	 * these reserves the buddy allocator hands them out and every
+	 * forge_kmark / ram_console write corrupts live kernel or user
+	 * memory. */
+	memblock_reserve(0x5f000000, 0x100000);	/* rc49 64K + pstore 0xe0000 */
+	memblock_reserve(0x7f000000, PAGE_SIZE);	/* marker page A */
+	memblock_reserve(0xb0000000, PAGE_SIZE);	/* marker page B */
 	forge_cmark(7);				/* FORGE: memblock done */
 
 	paging_init();
 	forge_cmark(8);				/* FORGE: paging_init done (linear map up) */
+	forge_preserve_prev();			/* FORGE p37: save prev boot's slots */
 
 	acpi_table_upgrade();
 

@@ -75,29 +75,40 @@ static struct block_device *forge_expdb_bdev;
 #define FORGE_MARK_PHYS		0x7f000000UL
 #define FORGE_RC_PHYS		0x5f000000UL
 #define FORGE_RC_SIZE		(64 * 1024)
-#define FORGE_MARK_SIZE		1024
+/* p37: 2KB — bytes 0..1023 = live slots, 1024..2047 = previous-boot copy
+ * preserved by setup_arch (see forge_preserve_prev in arm64 setup.c). */
+#define FORGE_MARK_SIZE		2048
 
-static void forge_write_at(struct block_device *bdev, sector_t sect,
-			   void *data, int bytes)
+/* p37: returns the first submit_bio_wait error instead of swallowing it —
+ * p36b wrote nothing and the old void version could not tell us why. */
+static int forge_write_at(struct block_device *bdev, sector_t sect,
+			  void *data, int bytes)
 {
-	int off;
+	int off, err;
 
 	for (off = 0; off < bytes; off += PAGE_SIZE) {
 		struct bio *bio = bio_alloc(GFP_KERNEL, 1);
 		int len = min_t(int, PAGE_SIZE, bytes - off);
 
+		if (!bio)
+			return -ENOMEM;
 		bio->bi_bdev = bdev;
 		bio->bi_iter.bi_sector = sect + (off >> 9);
-		bio_set_op_attrs(bio, REQ_OP_WRITE, 0);
+		bio_set_op_attrs(bio, REQ_OP_WRITE, REQ_SYNC);
 		bio_add_page(bio, virt_to_page((unsigned long)data + off),
 			     len, offset_in_page((unsigned long)data + off));
-		submit_bio_wait(bio);
+		err = submit_bio_wait(bio);
 		bio_put(bio);
+		if (err)
+			return err;
 	}
+	return 0;
 }
 
-static void forge_mirror_expdb(void)
+static int forge_mirror_expdb(void)
 {
+	int err;
+
 	if (!forge_expdb_bdev) {
 		/* blkdev_get_by_dev needs the partition scanned by the msdc
 		 * probe, but NOT the /dev node (devtmpfs is only mounted by
@@ -105,17 +116,68 @@ static void forge_mirror_expdb(void)
 		forge_expdb_bdev = blkdev_get_by_dev(FORGE_EXPDB_DEV,
 						     FMODE_WRITE, NULL);
 		if (IS_ERR(forge_expdb_bdev)) {
+			err = PTR_ERR(forge_expdb_bdev);
 			forge_expdb_bdev = NULL;	/* retry next loop */
-			return;
+			return err;
 		}
-		pr_info("FORGE deadman: expdb mirror open\n");
+		pr_info("FORGE mirror: expdb open\n");
 	}
-	/* layout: sector 0 = 1KB marker page, sector 2048 (1MB) = 64KB rc49 */
-	forge_write_at(forge_expdb_bdev, 0,
-		       phys_to_virt(FORGE_MARK_PHYS), FORGE_MARK_SIZE);
-	forge_write_at(forge_expdb_bdev, 2048,
-		       phys_to_virt(FORGE_RC_PHYS), FORGE_RC_SIZE);
+	/* layout: sector 0 = 2KB marker page (live + prev-boot copy),
+	 * sector 2048 (1MB) = 64KB rc49 */
+	err = forge_write_at(forge_expdb_bdev, 0,
+			     phys_to_virt(FORGE_MARK_PHYS), FORGE_MARK_SIZE);
+	if (!err)
+		err = forge_write_at(forge_expdb_bdev, 2048,
+				     phys_to_virt(FORGE_RC_PHYS),
+				     FORGE_RC_SIZE);
+	return err;
 }
+
+/* p37: the mirror lives in its OWN thread. In p36b it ran inside the kick
+ * loop, so a single stuck submit_bio_wait stopped the WDT kicks and turned
+ * an IO stall into a spurious WDT reset (prime suspect for the t=40s
+ * preloader flash). Slot 106 = (successful writes << 32) | last -errno. */
+static int forge_mirror_fn(void *arg)
+{
+	u64 ok = 0;
+	int err;
+
+	while (!kthread_should_stop()) {
+		msleep(1000);
+		err = forge_mirror_expdb();
+		if (!err)
+			ok++;
+		forge_kmark_ptr(106, (ok << 32) | ((u32)(-err) & 0xffff));
+	}
+	return 0;
+}
+
+/* p37 (BUG C counterpart): stamp the oops/panic into DRAM slots that no
+ * healthy boot ever rewrites — they survive any number of warm cycles.
+ * Priority above ipanic_die so the stamps land even if aee crashes. */
+#include <linux/kdebug.h>
+#include <linux/notifier.h>
+static int forge_die_cb(struct notifier_block *nb, unsigned long cmd, void *p)
+{
+	struct die_args *a = p;
+
+	forge_kmark_ptr(107, 0xD1E0000UL | (cmd & 0xffff));
+	if (a && a->regs) {
+		forge_kmark_ptr(108, a->regs->pc);
+		forge_kmark_ptr(109, a->regs->regs[30]);
+	}
+	return NOTIFY_DONE;
+}
+static struct notifier_block forge_die_nb = {
+	.notifier_call = forge_die_cb, .priority = 0x7fffffff };
+
+static int forge_panic_cb(struct notifier_block *nb, unsigned long ev, void *p)
+{
+	forge_kmark_ptr(110, 0xBAD0BAD0UL);
+	return NOTIFY_DONE;
+}
+static struct notifier_block forge_panic_nb = {
+	.notifier_call = forge_panic_cb, .priority = 0x7fffffff };
 
 static int forge_deadman_fn(void *arg)
 {
@@ -155,7 +217,8 @@ static int forge_deadman_fn(void *arg)
 		}
 		mt_reg_sync_writel(MTK_WDT_RESTART_KEY, MTK_WDT_RESTART);
 		forge_kmark_ptr(95, (u64)(++loops) | (now_s << 32));
-		forge_mirror_expdb();
+		/* p37: NO IO here — the kick loop must never block on eMMC;
+		 * the expdb mirror runs in forge_mirror_fn. */
 		msleep(1000);
 	}
 	/* park: never kick again */
@@ -835,6 +898,10 @@ static int mtk_wdt_probe(struct platform_device *dev)
 	mtk_wdt_mode_config(FALSE, FALSE, TRUE, FALSE, TRUE);
 	/* p30: own kicker thread + recovery auto-mark (see top of file) */
 	kthread_run(forge_deadman_fn, NULL, "forge_deadman");
+	/* p37: mirror in its own thread + die/panic stamps (slots 106-110) */
+	kthread_run(forge_mirror_fn, NULL, "forge_mirror");
+	register_die_notifier(&forge_die_nb);
+	atomic_notifier_chain_register(&panic_notifier_list, &forge_panic_nb);
     #elif defined(CONFIG_MTK_WD_KICKER)	/* Initialize to dual mode */
 	pr_debug("mtk_wdt_probe : Initialize to dual mode\n");
 	mtk_wdt_mode_config(TRUE, TRUE, TRUE, FALSE, TRUE);

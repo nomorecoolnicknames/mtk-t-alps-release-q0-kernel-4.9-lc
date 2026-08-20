@@ -287,6 +287,7 @@ static void android_enable(struct android_dev *dev)
 	if (--dev->disable_depth == 0) {
 		usb_add_config(cdev, &android_config_driver,
 					android_bind_config);
+		forge_kmark(114);	/* forge p37: about to pull up D+ */
 		usb_gadget_connect(cdev->gadget);
 	}
 }
@@ -352,8 +353,14 @@ static int ffs_function_init(struct android_usb_function *f,
 
 	config = f->config;
 	config->fi = usb_get_function_instance("ffs");
-	if (IS_ERR(config->fi))
-		return PTR_ERR(config->fi);
+	if (IS_ERR(config->fi)) {
+		int ret = PTR_ERR(config->fi);
+
+		/* forge p37: leave no ERR_PTR behind — the unwind path
+		 * (android_cleanup_functions) blindly puts config->fi. */
+		config->fi = NULL;
+		return ret;
+	}
 
 	opts = to_f_fs_opts(config->fi);
 	opts->dev->ffs_ready_callback = functionfs_ready_callback;
@@ -368,10 +375,11 @@ static void ffs_function_cleanup(struct android_usb_function *f)
 	struct functionfs_config *config = f->config;
 
 
-	if (config)
+	if (config && !IS_ERR_OR_NULL(config->fi))
 		usb_put_function_instance(config->fi);
 
 	kfree(f->config);
+	f->config = NULL;
 }
 
 static void ffs_function_enable(struct android_usb_function *f)
@@ -482,6 +490,8 @@ static int functionfs_ready_callback(struct ffs_data *ffs)
 
 	mutex_lock(&dev->mutex);
 
+	forge_kmark(113);	/* forge p37: adbd wrote ffs descriptors */
+
 	config->data = ffs;
 	config->opened = true;
 
@@ -541,22 +551,29 @@ acm_function_init(struct android_usb_function *f,
 		config->f_acm_inst[i] = usb_get_function_instance("acm");
 		if (IS_ERR(config->f_acm_inst[i])) {
 			ret = PTR_ERR(config->f_acm_inst[i]);
-			goto err_usb_get_function_instance;
+			config->f_acm_inst[i] = NULL;
+			goto err_put;
 		}
 		config->f_acm[i] = usb_get_function(config->f_acm_inst[i]);
 		if (IS_ERR(config->f_acm[i])) {
 			ret = PTR_ERR(config->f_acm[i]);
-			goto err_usb_get_function;
+			config->f_acm[i] = NULL;
+			goto err_put;
 		}
 	}
 	return 0;
-err_usb_get_function_instance:
-	pr_err("Could not usb_get_function_instance() %d\n", i);
-	while (i-- > 0) {
-		usb_put_function(config->f_acm[i]);
-err_usb_get_function:
-		pr_err("Could not usb_get_function() %d\n", i);
-		usb_put_function_instance(config->f_acm_inst[i]);
+err_put:
+	/* forge p37: unwind fully and leave the array NULL-clean — the
+	 * composite fail path calls acm_function_cleanup again, and the old
+	 * interleaved-goto version left ERR_PTRs behind for it to put. */
+	pr_err("acm init failed at instance %d (%d)\n", i, ret);
+	for (; i >= 0; i--) {
+		if (config->f_acm[i])
+			usb_put_function(config->f_acm[i]);
+		config->f_acm[i] = NULL;
+		if (config->f_acm_inst[i])
+			usb_put_function_instance(config->f_acm_inst[i]);
+		config->f_acm_inst[i] = NULL;
 	}
 	return ret;
 }
@@ -566,9 +583,15 @@ static void acm_function_cleanup(struct android_usb_function *f)
 	int i;
 	struct acm_function_config *config = f->config;
 
+	if (!config)
+		return;
 	for (i = 0; i < MAX_ACM_INSTANCES; i++) {
-		usb_put_function(config->f_acm[i]);
-		usb_put_function_instance(config->f_acm_inst[i]);
+		if (!IS_ERR_OR_NULL(config->f_acm[i]))
+			usb_put_function(config->f_acm[i]);
+		config->f_acm[i] = NULL;
+		if (!IS_ERR_OR_NULL(config->f_acm_inst[i]))
+			usb_put_function_instance(config->f_acm_inst[i]);
+		config->f_acm_inst[i] = NULL;
 	}
 	kfree(f->config);
 	f->config = NULL;
@@ -1630,13 +1653,20 @@ static int audio_source_function_init(struct android_usb_function *f,
 		return -ENOMEM;
 
 	config->f_aud_inst = usb_get_function_instance("audio_source");
-	if (IS_ERR(config->f_aud_inst))
-		return PTR_ERR(config->f_aud_inst);
+	if (IS_ERR(config->f_aud_inst)) {
+		int ret = PTR_ERR(config->f_aud_inst);
+
+		kfree(config);	/* forge p37: was leaked */
+		return ret;
+	}
 
 	config->f_aud = usb_get_function(config->f_aud_inst);
 	if (IS_ERR(config->f_aud)) {
+		int ret = PTR_ERR(config->f_aud);
+
 		usb_put_function_instance(config->f_aud_inst);
-		return PTR_ERR(config->f_aud);
+		kfree(config);	/* forge p37: was leaked */
+		return ret;
 	}
 
 	f->config = config;
@@ -1647,6 +1677,12 @@ static void audio_source_function_cleanup(struct android_usb_function *f)
 {
 	struct audio_source_function_config *config = f->config;
 
+	/* forge p37 (BUG B): init fails before f->config is assigned when the
+	 * "audio_source" function driver isn't built (no USB_F_AUDIO_SRC) —
+	 * the composite fail-path cleanup then dereferenced NULL here and
+	 * oopsed kernel_init on every p31-p34 boot. */
+	if (!config)
+		return;
 
 	usb_put_function(config->f_aud);
 	usb_put_function_instance(config->f_aud_inst);
@@ -1894,9 +1930,11 @@ static int android_init_functions(struct android_usb_function **functions,
 
 err_out:
 	device_destroy(android_class, f->dev->devt);
+	f->dev = NULL;		/* forge p37: the composite fail path walks */
 err_create:
-	kfree(f->dev_name);
-	return err;
+	kfree(f->dev_name);	/* the whole table again via */
+	f->dev_name = NULL;	/* android_cleanup_functions — no dangling */
+	return err;		/* pointers, no double kfree (BUG B). */
 }
 
 static void android_cleanup_functions(struct android_usb_function **functions)
@@ -1910,6 +1948,8 @@ static void android_cleanup_functions(struct android_usb_function **functions)
 		if (f->dev) {
 			device_destroy(android_class, f->dev->devt);
 			kfree(f->dev_name);
+			f->dev = NULL;		/* forge p37: idempotent */
+			f->dev_name = NULL;
 		}
 
 		if (f->cleanup)
@@ -2000,6 +2040,15 @@ functions_store(struct device *pdev, struct device_attribute *attr,
 	int err;
 	int is_ffs;
 	int ffs_enabled = 0;
+
+	/* forge p37 slot 111: userspace reached the usb rc — value holds the
+	 * first 8 chars of the requested function list (e.g. "mtp,adb\0"). */
+	{
+		u64 v = 0;
+
+		memcpy(&v, buff, min_t(size_t, sizeof(v), size));
+		forge_kmark_ptr(111, (unsigned long)v);
+	}
 
 	mutex_lock(&dev->mutex);
 
@@ -2099,6 +2148,9 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 	pr_notice("[USB]%s: device_attr->attr.name: %s\n", __func__, attr->attr.name);
 
 	ret = kstrtoint(buff, 0, &enabled);
+
+	/* forge p37 slot 112: android0/enable written (value = 0/1). */
+	forge_kmark_ptr(112, (unsigned long)enabled);
 
 	if (enabled)
 		forge_userspace_alive = 1;
