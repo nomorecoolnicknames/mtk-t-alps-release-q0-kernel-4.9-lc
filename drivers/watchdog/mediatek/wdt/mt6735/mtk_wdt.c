@@ -16,6 +16,7 @@
 #include <linux/kernel.h>
 #include <linux/miscdevice.h>
 #include <linux/fs.h>
+#include <linux/bio.h>		/* forge p36: expdb mirror via submit_bio */
 #include <linux/device.h>
 #include <linux/interrupt.h>
 #include <linux/spinlock.h>
@@ -69,30 +70,51 @@ extern void __iomem *toprgu_base;	/* defined below (line ~96) */
  * the cold PMIC-off that wipes DRAM — this ends the marker-capture
  * lottery (p32/p33/p34 captures all came back 0xFF after cold-offs).
  * Layout in expdb: offset 0 = 1KB marker page, offset 1MB = 64KB rc49. */
-static struct file *forge_expdb_fp;
-#define FORGE_EXPDB_PATH	"/dev/mmcblk0p10"
+static struct block_device *forge_expdb_bdev;
+#define FORGE_EXPDB_DEV		MKDEV(179, 10)	/* expdb = mmcblk0p10, 10MB */
 #define FORGE_MARK_PHYS		0x7f000000UL
 #define FORGE_RC_PHYS		0x5f000000UL
 #define FORGE_RC_SIZE		(64 * 1024)
 #define FORGE_MARK_SIZE		1024
 
+static void forge_write_at(struct block_device *bdev, sector_t sect,
+			   void *data, int bytes)
+{
+	int off;
+
+	for (off = 0; off < bytes; off += PAGE_SIZE) {
+		struct bio *bio = bio_alloc(GFP_KERNEL, 1);
+		int len = min_t(int, PAGE_SIZE, bytes - off);
+
+		bio->bi_bdev = bdev;
+		bio->bi_iter.bi_sector = sect + (off >> 9);
+		bio_set_op_attrs(bio, REQ_OP_WRITE, 0);
+		bio_add_page(bio, virt_to_page((unsigned long)data + off),
+			     len, offset_in_page((unsigned long)data + off));
+		submit_bio_wait(bio);
+		bio_put(bio);
+	}
+}
+
 static void forge_mirror_expdb(void)
 {
-	if (!forge_expdb_fp) {
-		forge_expdb_fp = filp_open(FORGE_EXPDB_PATH,
-					   O_WRONLY | O_SYNC | O_LARGEFILE, 0);
-		if (IS_ERR(forge_expdb_fp)) {
-			forge_expdb_fp = NULL;	/* retry next loop */
+	if (!forge_expdb_bdev) {
+		/* blkdev_get_by_dev needs the partition scanned by the msdc
+		 * probe, but NOT the /dev node (devtmpfs is only mounted by
+		 * userspace init — which a wedged boot never reaches). */
+		forge_expdb_bdev = blkdev_get_by_dev(FORGE_EXPDB_DEV,
+						     FMODE_WRITE, NULL);
+		if (IS_ERR(forge_expdb_bdev)) {
+			forge_expdb_bdev = NULL;	/* retry next loop */
 			return;
 		}
 		pr_info("FORGE deadman: expdb mirror open\n");
 	}
-	kernel_write(forge_expdb_fp,
-		     (const char *)phys_to_virt(FORGE_MARK_PHYS),
-		     FORGE_MARK_SIZE, 0);
-	kernel_write(forge_expdb_fp,
-		     (const char *)phys_to_virt(FORGE_RC_PHYS),
-		     FORGE_RC_SIZE, 1024 * 1024);
+	/* layout: sector 0 = 1KB marker page, sector 2048 (1MB) = 64KB rc49 */
+	forge_write_at(forge_expdb_bdev, 0,
+		       phys_to_virt(FORGE_MARK_PHYS), FORGE_MARK_SIZE);
+	forge_write_at(forge_expdb_bdev, 2048,
+		       phys_to_virt(FORGE_RC_PHYS), FORGE_RC_SIZE);
 }
 
 static int forge_deadman_fn(void *arg)
