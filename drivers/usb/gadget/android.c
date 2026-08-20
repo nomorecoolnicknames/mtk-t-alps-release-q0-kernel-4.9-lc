@@ -34,6 +34,9 @@
 /* forge: fwd decl — defined later in this file, called from the f_*
  * sources #included below (f_mtp.c, f_midi.c). */
 static struct device *android_lookup_function_device(char *name);
+/* forge p34: DRAM markers (defined in arch/arm64/kernel/setup.c). */
+extern void forge_kmark(int ms);
+extern void forge_kmark_ptr(int ms, unsigned long v);
 
 /* Add for HW/SW connect */
 
@@ -2809,7 +2812,11 @@ static int __init init(void)
 
 	_android_dev = dev;
 
+	/* forge p34: brackets around the probe that never returns when the
+	 * legacy gadget wedges the boot (slots 102/103). */
+	forge_kmark(102);
 	err = usb_composite_probe(&android_usb_driver);
+	forge_kmark_ptr(103, (unsigned long)err);
 	if (err) {
 		pr_err("%s: failed to probe driver %d", __func__, err);
 		_android_dev = NULL;

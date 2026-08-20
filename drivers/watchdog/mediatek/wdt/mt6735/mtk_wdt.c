@@ -67,6 +67,8 @@ static int forge_deadman_fn(void *arg)
 {
 	int marked = 0, loops = 0;
 
+	/* forge p34 slot 104: proves the deadman thread actually ran. */
+	forge_kmark_ptr(104, 1);
 	while (!kthread_should_stop()) {
 		u64 now_s = div_u64(sched_clock(), 1000000000);
 
@@ -86,16 +88,15 @@ static int forge_deadman_fn(void *arg)
 			marked = 2;
 			pr_info("FORGE deadman: healthy window passed, recovery mark cleared\n");
 		}
-		/* p33 DIAGNOSTIC: hard deadline at 180 s UNLESS userspace has
-		 * configured the android0 gadget (forge_userspace_alive).
-		 * Rationale: the p32 run wedged with the kick-forever deadman
-		 * alive (static LK logo, no WDT reset) and the only escape was
-		 * a hard power-off, which erased the DRAM markers. With a
-		 * deadline, a wedged boot self-resets WARM at ~180s+WDT, the
-		 * markers survive, and the Vol+ catch lands in TWRP. A healthy
-		 * boot cancels the deadline by writing android0/enable. */
-		if (now_s >= 180 && !forge_userspace_alive) {
-			pr_emerg("FORGE deadman: no userspace by 180s, stop kicking -> WDT reset\n");
+		/* p34 DIAGNOSTIC: hard deadline by LOOP COUNT (not sched_clock,
+		 * which is a suspect on this box): 120 loops ~ 2-2.5 min,
+		 * UNLESS userspace has configured the android0 gadget
+		 * (forge_userspace_alive). A wedged boot self-resets WARM, the
+		 * DRAM markers survive, and the Vol+ catch lands in TWRP. */
+		if (loops >= 120 && !forge_userspace_alive) {
+			forge_kmark_ptr(105, (unsigned long)loops);
+			pr_emerg("FORGE deadman: no userspace by %d loops, stop kicking -> WDT reset\n",
+				 loops);
 			break;
 		}
 		mt_reg_sync_writel(MTK_WDT_RESTART_KEY, MTK_WDT_RESTART);
