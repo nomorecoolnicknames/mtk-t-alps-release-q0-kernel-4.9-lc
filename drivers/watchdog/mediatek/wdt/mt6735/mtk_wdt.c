@@ -63,6 +63,38 @@ extern void forge_kmark_ptr(int ms, unsigned long v);
 extern int forge_userspace_alive;	/* android.c: android0 configured */
 extern void __iomem *toprgu_base;	/* defined below (line ~96) */
 
+/* forge p36: mirror the DRAM marker page (phys 0x7f000000, 1KB) and the
+ * ram console (phys 0x5f000000, 64KB) into the expdb partition (10MB,
+ * mmcblk0p10) once per deadman loop. eMMC survives ANY reset, including
+ * the cold PMIC-off that wipes DRAM — this ends the marker-capture
+ * lottery (p32/p33/p34 captures all came back 0xFF after cold-offs).
+ * Layout in expdb: offset 0 = 1KB marker page, offset 1MB = 64KB rc49. */
+static struct file *forge_expdb_fp;
+#define FORGE_EXPDB_PATH	"/dev/mmcblk0p10"
+#define FORGE_MARK_PHYS		0x7f000000UL
+#define FORGE_RC_PHYS		0x5f000000UL
+#define FORGE_RC_SIZE		(64 * 1024)
+#define FORGE_MARK_SIZE		1024
+
+static void forge_mirror_expdb(void)
+{
+	if (!forge_expdb_fp) {
+		forge_expdb_fp = filp_open(FORGE_EXPDB_PATH,
+					   O_WRONLY | O_SYNC | O_LARGEFILE, 0);
+		if (IS_ERR(forge_expdb_fp)) {
+			forge_expdb_fp = NULL;	/* retry next loop */
+			return;
+		}
+		pr_info("FORGE deadman: expdb mirror open\n");
+	}
+	kernel_write(forge_expdb_fp,
+		     (const char *)phys_to_virt(FORGE_MARK_PHYS),
+		     FORGE_MARK_SIZE, 0);
+	kernel_write(forge_expdb_fp,
+		     (const char *)phys_to_virt(FORGE_RC_PHYS),
+		     FORGE_RC_SIZE, 1024 * 1024);
+}
+
 static int forge_deadman_fn(void *arg)
 {
 	int marked = 0, loops = 0;
@@ -101,6 +133,7 @@ static int forge_deadman_fn(void *arg)
 		}
 		mt_reg_sync_writel(MTK_WDT_RESTART_KEY, MTK_WDT_RESTART);
 		forge_kmark_ptr(95, (u64)(++loops) | (now_s << 32));
+		forge_mirror_expdb();
 		msleep(1000);
 	}
 	/* park: never kick again */
