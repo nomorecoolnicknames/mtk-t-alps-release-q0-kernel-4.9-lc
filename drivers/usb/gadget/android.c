@@ -42,6 +42,12 @@ extern void forge_kmark_ptr(int ms, unsigned long v);
 
 #include "u_fs.h"
 
+/* forge p41: legacy f_adb, ported byte-for-byte from the proven stock 3.18
+ * tree. The shared ramdisk never mounts functionfs and never writes
+ * f_ffs/aliases (p40 FACT) — its adbd talks to /dev/android_adb, i.e. THIS
+ * function, exactly like the working stock/LOS-3.18 boot. */
+#include "f_adb.c"
+
 #ifdef CONFIG_MTK_KERNEL_POWER_OFF_CHARGING
 #include "f_hid.c"
 #endif
@@ -521,6 +527,114 @@ static void functionfs_closed_callback(struct ffs_data *ffs)
 	}
 
 	mutex_unlock(&dev->mutex);
+}
+
+/* forge p41: legacy adb function glue — verbatim from stock 3.18 android.c
+ * (the enable/disable/ready/closed gating is #if 0 there too: "This patch
+ * cause WHQL fail"), so the gadget does not gate on adbd. */
+struct adb_data {
+	bool opened;
+	bool enabled;
+};
+
+static int
+adb_function_init(struct android_usb_function *f,
+		struct usb_composite_dev *cdev)
+{
+	f->config = kzalloc(sizeof(struct adb_data), GFP_KERNEL);
+	if (!f->config)
+		return -ENOMEM;
+
+	return adb_setup();
+}
+
+static void adb_function_cleanup(struct android_usb_function *f)
+{
+	adb_cleanup();
+	kfree(f->config);
+	f->config = NULL;
+}
+
+static int
+adb_function_bind_config(struct android_usb_function *f,
+		struct usb_configuration *c)
+{
+	return adb_bind_config(c);
+}
+
+static void adb_android_function_enable(struct android_usb_function *f)
+{
+/* This patch cause WHQL fail */
+#if 0
+	struct android_dev *dev = _android_dev;
+	struct adb_data *data = f->config;
+
+	data->enabled = true;
+
+	/* Disable the gadget until adbd is ready */
+	if (!data->opened)
+		android_disable(dev);
+#endif
+}
+
+static void adb_android_function_disable(struct android_usb_function *f)
+{
+/* This patch cause WHQL fail */
+#if 0
+	struct android_dev *dev = _android_dev;
+	struct adb_data *data = f->config;
+
+	data->enabled = false;
+
+	/* Balance the disable that was called in closed_callback */
+	if (!data->opened)
+		android_enable(dev);
+#endif
+}
+
+static struct android_usb_function adb_function = {
+	.name		= "adb",
+	.enable		= adb_android_function_enable,
+	.disable	= adb_android_function_disable,
+	.init		= adb_function_init,
+	.cleanup	= adb_function_cleanup,
+	.bind_config	= adb_function_bind_config,
+};
+
+static void adb_ready_callback(void)
+{
+/* This patch cause WHQL fail */
+#if 0
+	struct android_dev *dev = _android_dev;
+	struct adb_data *data = adb_function.config;
+
+	mutex_lock(&dev->mutex);
+
+	data->opened = true;
+
+	if (data->enabled)
+		android_enable(dev);
+
+	mutex_unlock(&dev->mutex);
+#endif
+}
+
+static void adb_closed_callback(void)
+{
+/* This patch cause WHQL fail */
+#if 0
+	struct android_dev *dev = _android_dev;
+	struct adb_data *data = adb_function.config;
+
+	mutex_lock(&dev->mutex);
+
+	data->opened = false;
+
+	if (data->enabled)
+		android_disable(dev);
+
+	mutex_unlock(&dev->mutex);
+#endif
 }
 
 /* note all serial port number could not exceed MAX_U_SERIAL_PORTS */
@@ -1845,6 +1959,7 @@ static struct android_usb_function midi_function = {
 #endif
 
 static struct android_usb_function *supported_functions[] = {
+	&adb_function,	/* forge p41: the ramdisk's adbd path (android_adb) */
 	&ffs_function,
 	&acm_function,
 	&mtp_function,
