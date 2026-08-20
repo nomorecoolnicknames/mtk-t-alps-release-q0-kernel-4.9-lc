@@ -140,14 +140,24 @@ static int forge_mirror_expdb(void)
 static int forge_mirror_fn(void *arg)
 {
 	u64 ok = 0;
-	int err;
+	int err, early_done = 0;
 
 	while (!kthread_should_stop()) {
 		msleep(1000);
 		err = forge_mirror_expdb();
 		if (!err)
 			ok++;
-		forge_kmark_ptr(106, (ok << 32) | ((u32)(-err) & 0xffff));
+		/* p39: one-shot EARLY rc49 snapshot at sector 4096 (2MB) —
+		 * the live ring at 1MB only holds the last ~40s, which kept
+		 * hiding the first-seconds evidence (ueventd, msdc, by-name
+		 * links). First successful loop ≈ earliest possible moment. */
+		if (!err && !early_done) {
+			early_done = !forge_write_at(forge_expdb_bdev, 4096,
+						     phys_to_virt(FORGE_RC_PHYS),
+						     FORGE_RC_SIZE);
+		}
+		forge_kmark_ptr(106, (ok << 32) | ((u32)early_done << 16) |
+				((u32)(-err) & 0xffff));
 	}
 	return 0;
 }

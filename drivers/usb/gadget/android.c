@@ -2149,8 +2149,9 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 
 	ret = kstrtoint(buff, 0, &enabled);
 
-	/* forge p37 slot 112: android0/enable written (value = 0/1). */
-	forge_kmark_ptr(112, (unsigned long)enabled);
+	/* forge p37 slot 112: android0/enable written (0x100 | value —
+	 * distinguishable from an unstamped slot even for enable=0). */
+	forge_kmark_ptr(112, 0x100UL | (unsigned long)enabled);
 
 	if (enabled)
 		forge_userspace_alive = 1;
@@ -2460,6 +2461,8 @@ static int android_bind(struct usb_composite_dev *cdev)
 	struct usb_gadget	*gadget = cdev->gadget;
 	int			id, ret;
 
+	forge_kmark(120);	/* forge p39: android_bind in */
+
 	/* Save the default handler */
 	dev->setup_complete = cdev->req->complete;
 
@@ -2472,6 +2475,7 @@ static int android_bind(struct usb_composite_dev *cdev)
 	ret = android_init_functions(dev->functions, cdev);
 	if (ret)
 		return ret;
+	forge_kmark(121);	/* forge p39: functions init done */
 
 	/* Allocate string descriptor numbers ... note that string
 	 * contents can be overridden by the composite_dev glue.
@@ -2506,6 +2510,7 @@ static int android_bind(struct usb_composite_dev *cdev)
 #endif
 	dev->cdev = cdev;
 
+	forge_kmark(122);	/* forge p39: android_bind out */
 	return 0;
 }
 
@@ -2853,7 +2858,9 @@ static int __init init(void)
 	 * legacy gadget wedges the boot (slots 102/103). */
 	forge_kmark(102);
 	err = usb_composite_probe(&android_usb_driver);
-	forge_kmark_ptr(103, (unsigned long)err);
+	/* p39: 0x600D = returned zero (a plain 0 is indistinguishable from
+	 * "never stamped" — that ambiguity cost us the whole p38 read). */
+	forge_kmark_ptr(103, err ? (unsigned long)err : 0x600D);
 	if (err) {
 		pr_err("%s: failed to probe driver %d", __func__, err);
 		_android_dev = NULL;

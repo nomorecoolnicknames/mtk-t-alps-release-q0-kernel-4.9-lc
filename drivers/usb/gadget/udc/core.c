@@ -1289,6 +1289,7 @@ EXPORT_SYMBOL_GPL(usb_del_gadget_udc);
 static int udc_bind_to_driver(struct usb_udc *udc, struct usb_gadget_driver *driver)
 {
 	int ret;
+	extern void forge_kmark(int ms);	/* forge p39 */
 
 	dev_dbg(&udc->dev, "registering UDC driver [%s]\n",
 			driver->function);
@@ -1297,9 +1298,11 @@ static int udc_bind_to_driver(struct usb_udc *udc, struct usb_gadget_driver *dri
 	udc->dev.driver = &driver->driver;
 	udc->gadget->dev.driver = &driver->driver;
 
+	forge_kmark(117);			/* forge p39: before bind */
 	ret = driver->bind(udc->gadget, driver);
 	if (ret)
 		goto err1;
+	forge_kmark(123);			/* forge p39: before udc_start */
 	ret = usb_gadget_udc_start(udc);
 	if (ret) {
 		driver->unbind(udc->gadget);
@@ -1310,6 +1313,7 @@ static int udc_bind_to_driver(struct usb_udc *udc, struct usb_gadget_driver *dri
 #endif
 
 	kobject_uevent(&udc->dev.kobj, KOBJ_CHANGE);
+	forge_kmark(125);			/* forge p39: bound OK */
 	return 0;
 err1:
 	if (ret != -EISNAM)
@@ -1325,11 +1329,16 @@ int usb_gadget_probe_driver(struct usb_gadget_driver *driver)
 {
 	struct usb_udc		*udc = NULL;
 	int			ret = -ENODEV;
+	/* forge p39: bracket the probe path — p38 wedged between slot 102
+	 * (usb_composite_probe entry) and slot 73 (first pullup). */
+	extern void forge_kmark(int ms);
 
 	if (!driver || !driver->bind || !driver->setup)
 		return -EINVAL;
 
+	forge_kmark(115);
 	mutex_lock(&udc_lock);
+	forge_kmark(116);
 	if (driver->udc_name) {
 		list_for_each_entry(udc, &udc_list, list) {
 			pr_info("%s %s %s\n", __func__, driver->udc_name,

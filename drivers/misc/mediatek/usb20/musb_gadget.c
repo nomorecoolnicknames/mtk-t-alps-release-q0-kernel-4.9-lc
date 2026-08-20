@@ -2390,7 +2390,8 @@ static int musb_gadget_pullup(struct usb_gadget *gadget, int is_on)
 	 * Bracket the pullup so a bus-hang here is visible in DRAM. */
 	{
 		extern void forge_kmark_ptr(int ms, unsigned long v);
-		forge_kmark_ptr(73, (unsigned long)is_on);
+		/* p39: 0x10-bias so pullup(0) is visible too */
+		forge_kmark_ptr(73, 0x10UL | (unsigned long)!!is_on);
 	}
 
 	DBG(0, "is_on=%d, softconnect=%d ++\n", is_on, musb->softconnect);
@@ -2631,6 +2632,11 @@ static int musb_gadget_start
 	}
 
 	pm_runtime_get_sync(musb->controller);
+	{
+		/* forge p39: udc_start reached musb and survived runtime pm */
+		extern void forge_kmark(int ms);
+		forge_kmark(124);
+	}
 
 	DBG(2, "registering driver %s\n", driver->function);
 
