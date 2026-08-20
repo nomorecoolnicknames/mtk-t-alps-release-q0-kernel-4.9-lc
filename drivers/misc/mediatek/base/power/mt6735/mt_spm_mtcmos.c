@@ -1487,6 +1487,13 @@ int spm_mtcmos_ctrl_disp(int state)
 	unsigned long flags;
 	int count = 0;
 
+	/* forge p45: bracket the DIS domain — same slot as the display step
+	 * ladder (mtkfb.c). 0x60|state entry, 0x6F exit. */
+	{
+		extern void forge_kmark_ptr(int, unsigned long);
+		forge_kmark_ptr(126, 0x60UL | (unsigned int)state);
+	}
+
 	spm_mtcmos_noncpu_lock(flags);
 
 	if (state == STA_POWER_DOWN) {
@@ -1564,6 +1571,10 @@ int spm_mtcmos_ctrl_disp(int state)
 
 	spm_mtcmos_noncpu_unlock(flags);
 
+	{
+		extern void forge_kmark_ptr(int, unsigned long);
+		forge_kmark_ptr(126, 0x6FUL);	/* forge p45: DIS done */
+	}
 	return err;
 #else
 	return 1;

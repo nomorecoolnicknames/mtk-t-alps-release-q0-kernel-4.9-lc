@@ -2217,8 +2217,19 @@ static int mtkfb_probe(struct platform_device *pdev)
 	/* DISPFUNC(); */
 	DISPMSG("%s\n", __func__);
 
+/* forge p45: display-init step ladder in DRAM slot 126 (+74=fb_base,
+ * 76=plcm). One warm capture localizes a silent wedge to the exact call. */
+#define FKS(v) do { extern void forge_kmark_ptr(int, unsigned long); \
+		forge_kmark_ptr(126, (v)); } while (0)
+	FKS(0x11);
+
 #ifdef CONFIG_OF
 	_parse_tag_videolfb();
+	FKS(0x12);
+	{
+		extern void forge_kmark_ptr(int, unsigned long);
+		forge_kmark_ptr(74, (unsigned long)fb_base);
+	}
 #else
 	{
 		char *p = NULL;
@@ -2311,9 +2322,12 @@ static int mtkfb_probe(struct platform_device *pdev)
 #endif
 	}
 	primary_display_set_frame_buffer_address((unsigned long)fbdev->fb_va_base, fb_pa);
+	FKS(0x13);
 
 	/* mtkfb should parse lcm name from kernel boot command line */
+	FKS(0x14);
 	primary_display_init(mtkfb_find_lcm_driver(), lcd_fps, is_lcm_inited);
+	FKS(0x15);
 
 	init_state++; /* 1 */
 	MTK_FB_XRES = primary_display_get_width();
@@ -2345,6 +2359,7 @@ static int mtkfb_probe(struct platform_device *pdev)
 		DISPERR("mtkfb_fbinfo_init fail, r = %d\n", r);
 		goto cleanup;
 	}
+	FKS(0x16);
 	init_state++; /* 4 */
 	mtkfb_fbi = fbi;
 
@@ -2398,9 +2413,11 @@ static int mtkfb_probe(struct platform_device *pdev)
 #endif
 
 	MSG_FUNC_LEAVE();
+	FKS(0x1F);
 	return 0;
 
 cleanup:
+	FKS(0x1E);	/* forge p45: probe took the error path */
 	mtkfb_free_resources(fbdev, init_state);
 
 	/* printk("mtkfb_probe end\n"); */

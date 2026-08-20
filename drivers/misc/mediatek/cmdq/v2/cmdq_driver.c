@@ -1014,14 +1014,30 @@ static int cmdq_probe(struct platform_device *pDevice)
 
 	CMDQ_MSG("CMDQ driver probe begin\n");
 
+	/* forge p45: step ladder */
+	{
+		extern void forge_kmark_ptr(int, unsigned long);
+		forge_kmark_ptr(126, 0x42UL);
+	}
+
 	/* Function link */
 	cmdq_virtual_function_setting();
 
 	/* init cmdq device related data */
 	cmdq_dev_init(pDevice);
 
+	{
+		extern void forge_kmark_ptr(int, unsigned long);
+		forge_kmark_ptr(126, 0x43UL);	/* dev_init done */
+	}
+
 	/* init cmdq context */
 	cmdqCoreInitialize();
+
+	{
+		extern void forge_kmark_ptr(int, unsigned long);
+		forge_kmark_ptr(126, 0x44UL);	/* core initialized */
+	}
 
 	status =
 		alloc_chrdev_region(&gCmdqDevNo, 0, 1, CMDQ_DRIVER_DEVICE_NAME);
@@ -1153,6 +1169,11 @@ static int __init cmdq_init(void)
 {
 	int status;
 
+	/* forge p45: display step ladder (see mtkfb.c) */
+	{
+		extern void forge_kmark_ptr(int, unsigned long);
+		forge_kmark_ptr(126, 0x40UL);
+	}
 	CMDQ_MSG("CMDQ driver init begin\n");
 
 	/* Initialize group callback */
@@ -1195,6 +1216,10 @@ static int __init cmdq_init(void)
 
 	CMDQ_MSG("CMDQ driver init end\n");
 
+	{
+		extern void forge_kmark_ptr(int, unsigned long);
+		forge_kmark_ptr(126, 0x41UL);	/* forge p45 */
+	}
 	return 0;
 }
 

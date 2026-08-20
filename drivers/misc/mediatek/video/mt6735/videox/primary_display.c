@@ -5092,8 +5092,13 @@ int primary_display_init(char *lcm_name, unsigned int lcm_fps, int is_lcm_inited
 
 	pr_warn("[DISP]primary_display_init begin\n");
 
+/* forge p45: step ladder, see mtkfb.c */
+#define FKS(v) do { extern void forge_kmark_ptr(int, unsigned long); \
+		forge_kmark_ptr(126, (v)); } while (0)
+	FKS(0x20);
 	dprec_init();
 	dpmgr_init();
+	FKS(0x21);
 
 
 #ifndef MTK_FB_CMDQ_DISABLE
@@ -5123,8 +5128,14 @@ int primary_display_init(char *lcm_name, unsigned int lcm_fps, int is_lcm_inited
 	mutex_init(&(pgc->switch_dst_lock));
 #endif
 	_primary_path_lock(__func__);
+	FKS(0x22);
 
 	pgc->plcm = disp_lcm_probe(lcm_name, LCM_INTERFACE_NOTDEFINED, is_lcm_inited);
+	FKS(0x23);
+	{
+		extern void forge_kmark_ptr(int, unsigned long);
+		forge_kmark_ptr(76, (unsigned long)pgc->plcm);
+	}
 
 	if (pgc->plcm == NULL) {
 		DISPERR("disp_lcm_probe returns null\n");
@@ -5181,9 +5192,11 @@ int primary_display_init(char *lcm_name, unsigned int lcm_fps, int is_lcm_inited
 #else
 	primary_display_use_cmdq = CMDQ_DISABLE;
 #endif
+	FKS(0x24);
 
 	/* debug for bus hang issue (need to remove) */
 	ddp_dump_analysis(DISP_MODULE_CONFIG);
+	FKS(0x25);
 	if (primary_display_mode == DIRECT_LINK_MODE) {
 		__build_path_direct_link();
 		pgc->session_mode = DISP_SESSION_DIRECT_LINK_MODE;
@@ -5235,13 +5248,17 @@ int primary_display_init(char *lcm_name, unsigned int lcm_fps, int is_lcm_inited
 	dpmgr_path_reset(pgc->dpmgr_handle, CMDQ_DISABLE);
 #endif
 
+	FKS(0x26);
 	if (primary_display_use_cmdq == CMDQ_ENABLE) {
 		_cmdq_build_trigger_loop();
+		FKS(0x27);
 		_cmdq_start_trigger_loop();
+		FKS(0x28);
 		_cmdq_reset_config_handle();
 		_cmdq_insert_wait_frame_done_token();
 	}
 
+	FKS(0x29);
 
 	data_config = dpmgr_path_get_last_config(pgc->dpmgr_handle);
 
@@ -5468,6 +5485,7 @@ int primary_display_init(char *lcm_name, unsigned int lcm_fps, int is_lcm_inited
 	    (mmdvfs_get_mmdvfs_profile() == MMDVFS_PROFILE_D2_M_PLUS))
 		/* register_mmclk_switch_cb(primary_display_switch_mmsys_clk, _switch_mmsys_clk); */
 done:
+	FKS(0x2F);
 
 	/* disable OVL TF in video mode, cause cmdq/sodi log is not ready, avoid too much TF issue */
 	{
