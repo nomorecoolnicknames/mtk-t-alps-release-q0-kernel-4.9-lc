@@ -906,6 +906,12 @@ static int mtk_wdt_probe(struct platform_device *dev)
 	 * off), and nothing will kick it. */
 	pr_info("mtk_wdt_probe : DIAG_HARD deadman v2 (kick thread + recovery mark)\n");
 	mtk_wdt_mode_config(FALSE, FALSE, TRUE, FALSE, TRUE);
+	/* forge p43 (A0.3): keep DRAM in self-refresh across a HW WDT reset.
+	 * p37 fact: after the WDT deadline reset every DRAM capture came back
+	 * 0xFF — plain reset mode re-inits DRAM in the preloader. DDR-reserve
+	 * restores the second (DRAM) evidence channel; if this preloader
+	 * ignores the bit we merely stay where we are. */
+	mtk_rgu_dram_reserved(1);
 	/* p30: own kicker thread + recovery auto-mark (see top of file) */
 	kthread_run(forge_deadman_fn, NULL, "forge_deadman");
 	/* p37: mirror in its own thread + die/panic stamps (slots 106-110) */

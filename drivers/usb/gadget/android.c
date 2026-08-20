@@ -2733,7 +2733,16 @@ static void do_android_usb_state_monitor_work(struct work_struct *work)
 	if (dev && dev->cdev && dev->cdev->config)
 		usb_state = "CONFIGURED";
 
-	pr_warn("usb_state<%s>\n", usb_state);
+	/* forge p43 (A0.4): log only state CHANGES — the 3s heartbeat was
+	 * flooding the 64K rc49 ring and drowning real evidence. */
+	{
+		static const char *last_state;
+
+		if (usb_state != last_state) {
+			pr_warn("usb_state<%s>\n", usb_state);
+			last_state = usb_state;
+		}
+	}
 	schedule_delayed_work(&android_usb_state_monitor_work, msecs_to_jiffies(USB_STATE_MONITOR_DELAY));
 }
 static void trigger_android_usb_state_monitor_work(void)  /* forge: static — meta.c defines a same-named global */
