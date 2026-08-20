@@ -2087,6 +2087,11 @@ static ssize_t enable_show(struct device *pdev, struct device_attribute *attr,
 	return sprintf(buf, "%d\n", dev->enabled);
 }
 
+/* forge p33: set when userspace configures android0 — the deadman
+ * uses it to cancel the diagnostic WDT deadline on healthy boots. */
+int forge_userspace_alive;
+EXPORT_SYMBOL(forge_userspace_alive);
+
 static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 			    const char *buff, size_t size)
 {
@@ -2106,6 +2111,9 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 	pr_notice("[USB]%s: device_attr->attr.name: %s\n", __func__, attr->attr.name);
 
 	ret = kstrtoint(buff, 0, &enabled);
+
+	if (enabled)
+		forge_userspace_alive = 1;
 
 	if (enabled && !dev->enabled) {
 		/* ALPS01770952

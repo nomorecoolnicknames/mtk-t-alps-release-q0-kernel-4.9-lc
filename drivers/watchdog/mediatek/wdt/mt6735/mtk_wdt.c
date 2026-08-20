@@ -60,6 +60,7 @@
 #include <linux/sched.h>	/* sched_clock() */
 extern void rtc_forge_mark_recovery(int on);
 extern void forge_kmark_ptr(int ms, unsigned long v);
+extern int forge_userspace_alive;	/* android.c: android0 configured */
 extern void __iomem *toprgu_base;	/* defined below (line ~96) */
 
 static int forge_deadman_fn(void *arg)
@@ -84,6 +85,18 @@ static int forge_deadman_fn(void *arg)
 			rtc_forge_mark_recovery(0);
 			marked = 2;
 			pr_info("FORGE deadman: healthy window passed, recovery mark cleared\n");
+		}
+		/* p33 DIAGNOSTIC: hard deadline at 180 s UNLESS userspace has
+		 * configured the android0 gadget (forge_userspace_alive).
+		 * Rationale: the p32 run wedged with the kick-forever deadman
+		 * alive (static LK logo, no WDT reset) and the only escape was
+		 * a hard power-off, which erased the DRAM markers. With a
+		 * deadline, a wedged boot self-resets WARM at ~180s+WDT, the
+		 * markers survive, and the Vol+ catch lands in TWRP. A healthy
+		 * boot cancels the deadline by writing android0/enable. */
+		if (now_s >= 180 && !forge_userspace_alive) {
+			pr_emerg("FORGE deadman: no userspace by 180s, stop kicking -> WDT reset\n");
+			break;
 		}
 		mt_reg_sync_writel(MTK_WDT_RESTART_KEY, MTK_WDT_RESTART);
 		forge_kmark_ptr(95, (u64)(++loops) | (now_s << 32));
