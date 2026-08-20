@@ -321,7 +321,7 @@ static void hid_function_cleanup(struct android_usb_function *f)
 {
 	ghid_cleanup();
 }
-static struct android_usb_function hid_function = {
+static struct android_usb_function __maybe_unused hid_function = {
 	.name		= "hid",
 	.init		= hid_function_init,
 	.cleanup	= hid_function_cleanup,
@@ -900,7 +900,7 @@ static ssize_t serial_port_store(struct device *dev,
 static DEVICE_ATTR(port, S_IRUGO | S_IWUSR, serial_port_show, serial_port_store);
 static struct device_attribute *serial_function_attributes[] = { &dev_attr_port, NULL };
 
-static struct android_usb_function serial_function = {
+static struct android_usb_function __maybe_unused serial_function = {
 	.name		= "gser",
 	.init		= serial_function_init,
 	.cleanup	= serial_function_cleanup,
@@ -1075,7 +1075,7 @@ static struct device_attribute *eem_function_attributes[] = {
 	NULL
 };
 
-static struct android_usb_function eem_function = {
+static struct android_usb_function __maybe_unused eem_function = {
 	.name		= "eem",
 	.init		= eem_function_init,
 	.cleanup	= eem_function_cleanup,
@@ -1374,7 +1374,7 @@ static struct device_attribute *rndis_function_attributes[] = {
 	NULL
 };
 
-static struct android_usb_function rndis_function = {
+static struct android_usb_function __maybe_unused rndis_function = {
 	.name		= "rndis",
 	.init		= rndis_function_init,
 	.cleanup	= rndis_function_cleanup,
@@ -1573,7 +1573,7 @@ static struct device_attribute *mass_storage_function_attributes[] = {
 	NULL
 };
 
-static struct android_usb_function mass_storage_function = {
+static struct android_usb_function __maybe_unused mass_storage_function = {
 	.name		= "mass_storage",
 	.init		= mass_storage_function_init,
 	.cleanup	= mass_storage_function_cleanup,
@@ -1606,7 +1606,7 @@ static int accessory_function_ctrlrequest(struct android_usb_function *f,
 	return acc_ctrlrequest(cdev, c);
 }
 
-static struct android_usb_function accessory_function = {
+static struct android_usb_function __maybe_unused accessory_function = {
 	.name		= "accessory",
 	.init		= accessory_function_init,
 	.cleanup	= accessory_function_cleanup,
@@ -1664,7 +1664,7 @@ static int audio_source_function_bind_config(struct android_usb_function *f,
 	return usb_add_function(c, config->f_aud);
 }
 
-static struct android_usb_function audio_source_function = {
+static struct android_usb_function __maybe_unused audio_source_function = {
 	.name		= "audio_source",
 	.init		= audio_source_function_init,
 	.cleanup	= audio_source_function_cleanup,
@@ -1813,28 +1813,13 @@ static struct android_usb_function *supported_functions[] = {
 	&acm_function,
 	&mtp_function,
 	&ptp_function,
-	&eem_function,
-	&serial_function,
-	&rndis_function,
-	&mass_storage_function,
-	&accessory_function,
-	&audio_source_function,
-#ifdef CONFIG_SND_RAWMIDI
-	&midi_function,
-#endif
-#ifdef CONFIG_MTK_ECCCI_C2K_TMP
-	&rawbulk_modem_function,
-	&rawbulk_ets_function,
-	&rawbulk_atc_function,
-	&rawbulk_pcv_function,
-	&rawbulk_gps_function,
-#endif
-#ifdef CONFIG_USB_F_SS_LB
-	&loopback_function,
-#endif
-#ifdef CONFIG_MTK_KERNEL_POWER_OFF_CHARGING
-	&hid_function,
-#endif
+	/* forge p35 ISOLATION: drop every function I had to touch to get the
+	 * legacy gadget linking (eem/rndis = u_ether zone; serial; accessory;
+	 * midi) plus mass_storage/audio_source/hid/loopback/rawbulk. The
+	 * ramdisk default is mtp,adb (product/prop.mk), so ffs+mtp+ptp+acm
+	 * are sufficient for adb. If the boot survives with this table, the
+	 * wedge is in one of the dropped functions' init; re-add by halves.
+	 * If it still wedges, the core composite/UDC attach is the problem. */
 	NULL
 };
 
