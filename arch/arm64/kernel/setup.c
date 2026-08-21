@@ -313,6 +313,29 @@ static void __init forge_preserve_prev(void)
 	}
 }
 
+/*
+ * forge p46: a one-shot flag cell at page A + 2048 — outside both the
+ * milestone slots (0..1023) and the previous-boot copy (1024..2047), inside
+ * the reserved page. DRAM survives the warm reset (DDR-reserve, p43), so a
+ * subsystem can mark "I am about to do something that killed the last boot"
+ * and see it again on the next boot. A cold boot wipes it (0xFF...) and the
+ * attempt is made afresh.
+ */
+u64 forge_flag_get(void)
+{
+	return *(volatile u64 *)(phys_to_virt(FORGE_A) + 2048);
+}
+EXPORT_SYMBOL(forge_flag_get);
+
+void forge_flag_set(u64 v)
+{
+	void *p = phys_to_virt(FORGE_A) + 2048;
+
+	*(volatile u64 *)p = v;
+	__flush_dcache_area(p, 64);
+}
+EXPORT_SYMBOL(forge_flag_set);
+
 /* Like forge_kmark but the slot carries an arbitrary value (e.g. the
  * address of the initcall about to run); decode with the build's
  * System.map. */

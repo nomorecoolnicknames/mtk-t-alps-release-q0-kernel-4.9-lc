@@ -2221,6 +2221,24 @@ static int mtkfb_probe(struct platform_device *pdev)
  * 76=plcm). One warm capture localizes a silent wedge to the exact call. */
 #define FKS(v) do { extern void forge_kmark_ptr(int, unsigned long); \
 		forge_kmark_ptr(126, (v)); } while (0)
+/* forge p46 ONE-SHOT: display bring-up is the one thing here that can take
+ * the whole boot down. Mark the attempt in the reserved DRAM cell; if the
+ * previous boot left the mark set, that boot died in here — skip the probe
+ * this time so the phone still reaches adb (and the next flash) on its own.
+ * The mark is cleared on a successful probe and by any cold boot. */
+#define FORGE_DISP_TRY	0xD15A77EDULL
+	{
+		extern u64 forge_flag_get(void);
+		extern void forge_flag_set(u64);
+
+		if (forge_flag_get() == FORGE_DISP_TRY) {
+			forge_flag_set(0);
+			FKS(0x10);
+			pr_warn("[DISP] forge: previous boot died in display init — skipping this boot\n");
+			return -ENODEV;
+		}
+		forge_flag_set(FORGE_DISP_TRY);
+	}
 	FKS(0x11);
 
 #ifdef CONFIG_OF
@@ -2414,6 +2432,11 @@ static int mtkfb_probe(struct platform_device *pdev)
 
 	MSG_FUNC_LEAVE();
 	FKS(0x1F);
+	{
+		extern void forge_flag_set(u64);
+
+		forge_flag_set(0);	/* forge p46: display init survived */
+	}
 	return 0;
 
 cleanup:
