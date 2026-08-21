@@ -578,6 +578,30 @@ enum DISP_SELF_REFRESH_TYPE {
 	DISP_IOW(218, unsigned int)
 #define DISP_IOCTL_GET_DISPLAY_CAPS	\
 	DISP_IOW(219, struct disp_caps_info)
+
+/*
+ * forge p47: the ABI this device's userspace actually speaks.
+ *
+ * The MTK hwcomposer blob shipped for m5c was built against the 3.18 MTK
+ * display driver, where GET_DISPLAY_CAPS is ioctl nr 218 and disp_caps_info
+ * is six words. The Q0 tree inserted GET_IS_DRIVER_SUSPEND at 218 and grew
+ * disp_caps_info (rsz lists, lcm_degree, ...), so both the number and the
+ * size encoded in _IOW changed — the blob's call landed in the default
+ * case and it reported "! Failed to get display device cap", which is where
+ * SurfaceFlinger stopped. The sizes differ, so the legacy number does not
+ * collide with GET_IS_DRIVER_SUSPEND and both can be served.
+ */
+struct disp_caps_info_legacy {
+	unsigned int output_mode;
+	unsigned int output_pass;
+	unsigned int max_layer_num;
+	unsigned int disp_feature;
+	int is_support_frame_cfg_ioctl;
+	int is_output_rotated;
+};
+
+#define DISP_IOCTL_GET_DISPLAY_CAPS_LEGACY	\
+	DISP_IOW(218, struct disp_caps_info_legacy)
 #define DISP_IOCTL_INSERT_SESSION_BUFFERS	\
 	DISP_IOW(220, struct disp_session_buf_info)
 #define	DISP_IOCTL_FRAME_CONFIG	\

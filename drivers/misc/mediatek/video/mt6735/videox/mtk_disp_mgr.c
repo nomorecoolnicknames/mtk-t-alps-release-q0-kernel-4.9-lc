@@ -1843,6 +1843,48 @@ int _ioctl_get_display_caps(unsigned long arg)
 	return ret;
 }
 
+/* forge p47: serve the 3.18-era caps ABI the m5c hwcomposer blob calls
+ * (see disp_session.h). Same values the working 3.18 kernel reports. */
+static int _ioctl_get_display_caps_legacy(unsigned long arg)
+{
+	struct disp_caps_info_legacy caps;
+	void __user *argp = (void __user *)arg;
+
+	if (copy_from_user(&caps, argp, sizeof(caps)))
+		return -EFAULT;
+
+#ifdef DISP_HW_MODE_CAP
+	caps.output_mode = DISP_HW_MODE_CAP;
+#else
+	caps.output_mode = DISP_OUTPUT_CAP_DIRECT_LINK;
+#endif
+#ifdef DISP_HW_PASS_MODE
+	caps.output_pass = DISP_HW_PASS_MODE;
+#else
+	caps.output_pass = DISP_OUTPUT_CAP_SINGLE_PASS;
+#endif
+#ifdef DISP_HW_MAX_LAYER
+	caps.max_layer_num = DISP_HW_MAX_LAYER;
+#else
+	caps.max_layer_num = 4;
+#endif
+	caps.disp_feature = 0;
+#ifdef OVL_TIME_SHARING
+	caps.disp_feature |= DISP_FEATURE_TIME_SHARING;
+#endif
+#ifdef CONFIG_MTK_LCM_PHYSICAL_ROTATION_HW
+	caps.is_output_rotated = 1;
+#endif
+
+	DISPMSG("%s(legacy) mode:%d, pass:%d, max_layer_num:%d\n", __func__,
+		caps.output_mode, caps.output_pass, caps.max_layer_num);
+
+	if (copy_to_user(argp, &caps, sizeof(caps)))
+		return -EFAULT;
+
+	return 0;
+}
+
 int _ioctl_wait_vsync(unsigned long arg)
 {
 	int ret = 0;
@@ -2153,6 +2195,8 @@ long mtk_disp_mgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		return _ioctl_get_is_driver_suspend(arg);
 	case DISP_IOCTL_GET_DISPLAY_CAPS:
 		return _ioctl_get_display_caps(arg);
+	case DISP_IOCTL_GET_DISPLAY_CAPS_LEGACY:	/* forge p47 */
+		return _ioctl_get_display_caps_legacy(arg);
 	case DISP_IOCTL_SET_VSYNC_FPS:
 		return _ioctl_set_vsync(arg);
 	case DISP_IOCTL_SET_SESSION_MODE:
@@ -2205,7 +2249,11 @@ long mtk_disp_mgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		ret = primary_display_user_cmd(cmd, arg);
 		break;
 	default:
-		DISPMSG("[session]ioctl not supported, 0x%08x\n", cmd);
+		/* forge p47: decode the number so an ABI mismatch with the
+		 * vendor HAL names itself instead of needing a guess. */
+		DISPMSG("[session]ioctl not supported, 0x%08x (dir=%u type='%c' nr=%u size=%u)\n",
+			cmd, _IOC_DIR(cmd), (char)_IOC_TYPE(cmd), _IOC_NR(cmd),
+			_IOC_SIZE(cmd));
 	}
 
 	return ret;
