@@ -4547,6 +4547,19 @@ static int _ovl_fence_release_callback(uint32_t userdata)
 			cmdqBackupReadSlot(pgc->cur_config_fence, i, &fence_idx);
 			cmdqBackupReadSlot(pgc->subtractor_when_free, i, &subtractor);
 			mtkfb_release_fence(primary_session_id, i, fence_idx - subtractor);
+			/* forge p62: does the CMDQ completion callback ever run?
+			 * The present fence advances straight from the trigger
+			 * ioctl, but layer fences are released only from here —
+			 * if this is silent while frames keep arriving, the
+			 * callback is the broken half. */
+			if (i == 0) {
+				static unsigned int forge_rel_count;
+
+				forge_rel_count++;
+				if (forge_rel_count <= 8 || forge_rel_count % 100 == 0)
+					pr_err("forge-frame: release #%u L0 idx=%d sub=%d\n",
+					       forge_rel_count, fence_idx, subtractor);
+			}
 		}
 		mmprofile_log_ex(ddp_mmp_get_events()->primary_ovl_fence_release, MMPROFILE_FLAG_PULSE,
 			       i, fence_idx - subtractor);

@@ -1546,6 +1546,21 @@ static int _set_input_buffer_common(struct disp_session_input_config *session_in
 	session_input->setter = SESSION_USER_HWC;
 	session_id = session_input->session_id;
 
+	/* forge p62: is the HAL still feeding us frames? Print the first few
+	 * and then one in a hundred, so a stall shows up as silence rather
+	 * than as a wall of log. */
+	{
+		static unsigned int forge_cfg_count;
+
+		forge_cfg_count++;
+		if (forge_cfg_count <= 8 || forge_cfg_count % 100 == 0)
+			pr_err("forge-frame: setinput #%u layers=%u L0 en=%u idx=%u addr=%p\n",
+			       forge_cfg_count, session_input->config_layer_num,
+			       session_input->config[0].layer_enable,
+			       session_input->config[0].next_buff_idx,
+			       session_input->config[0].src_phy_addr);
+	}
+
 	if (is_session_exist(session_id) == 0) {
 		DISPERR("session id: %x not exists\n", session_id);
 		return -EFAULT;
