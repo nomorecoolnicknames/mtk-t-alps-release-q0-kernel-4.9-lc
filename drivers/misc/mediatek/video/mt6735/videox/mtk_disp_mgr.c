@@ -606,39 +606,28 @@ int _ioctl_prepare_present_fence(unsigned long arg)
 }
 #else
 /* extern struct disp_sync_info *_get_sync_info(unsigned int session_id, unsigned int timeline_id); */
-int _ioctl_prepare_present_fence(unsigned long arg)
+/* forge p61: split out so the 3.18-layout ioctl (nr 216) can share it. */
+static int _present_fence_create(unsigned int session_id, int *out_fd, unsigned int *out_idx)
 {
 	int ret = 0;
-
-	void __user *argp = (void __user *)arg;
 	struct fence_data data;
-	struct disp_present_fence preset_fence_struct;
 	static unsigned int fence_idx;
 	struct disp_sync_info *layer_info = NULL;
 
-	if (copy_from_user(&preset_fence_struct, (void __user *)arg, sizeof(struct disp_present_fence))) {
-		pr_debug("[FB Driver]: copy_from_user failed! line:%d\n", __LINE__);
+	if (is_session_exist(session_id) == 0) {
+		DISPERR("session id: %x not exists\n", session_id);
 		return -EFAULT;
 	}
 
-	if (is_session_exist(preset_fence_struct.session_id) == 0) {
-		DISPERR("session id: %x not exists\n", preset_fence_struct.session_id);
-		return -EFAULT;
-	}
-
-	if (DISP_SESSION_TYPE(preset_fence_struct.session_id) != DISP_SESSION_PRIMARY) {
-		DISPERR("non-primary ask for present fence! session=0x%x\n",
-			preset_fence_struct.session_id);
+	if (DISP_SESSION_TYPE(session_id) != DISP_SESSION_PRIMARY) {
+		DISPERR("non-primary ask for present fence! session=0x%x\n", session_id);
 		data.fence = MTK_FB_INVALID_FENCE_FD;
 		data.value = 0;
 	} else {
-		layer_info =
-		    _get_sync_info(preset_fence_struct.session_id,
-				   disp_sync_get_present_timeline_id());
+		layer_info = _get_sync_info(session_id, disp_sync_get_present_timeline_id());
 		if (layer_info == NULL) {
 			DISPERR("layer_info is null\n");
-			ret = -EFAULT;
-			return ret;
+			return -EFAULT;
 		}
 		/* create fence */
 		data.fence = MTK_FB_INVALID_FENCE_FD;
@@ -646,22 +635,66 @@ int _ioctl_prepare_present_fence(unsigned long arg)
 		ret = fence_create(layer_info->timeline, &data);
 		if (ret != 0) {
 			DISPPR_ERROR("%s%d,layer%d create Fence Object failed!\n",
-				     disp_session_mode_spy(preset_fence_struct.session_id),
-				     DISP_SESSION_DEV(preset_fence_struct.session_id),
+				     disp_session_mode_spy(session_id),
+				     DISP_SESSION_DEV(session_id),
 				     disp_sync_get_present_timeline_id());
 			ret = -EFAULT;
 		}
 	}
 
-	preset_fence_struct.present_fence_fd = data.fence;
-	preset_fence_struct.present_fence_index = data.value;
+	*out_fd = data.fence;
+	*out_idx = data.value;
+	mmprofile_log_ex(ddp_mmp_get_events()->present_fence_get, MMPROFILE_FLAG_PULSE,
+		       data.fence, data.value);
+	return ret;
+}
+
+int _ioctl_prepare_present_fence(unsigned long arg)
+{
+	int ret = 0;
+
+	void __user *argp = (void __user *)arg;
+	struct disp_present_fence preset_fence_struct;
+
+	if (copy_from_user(&preset_fence_struct, (void __user *)arg, sizeof(struct disp_present_fence))) {
+		pr_debug("[FB Driver]: copy_from_user failed! line:%d\n", __LINE__);
+		return -EFAULT;
+	}
+
+	ret = _present_fence_create(preset_fence_struct.session_id,
+				    &preset_fence_struct.present_fence_fd,
+				    &preset_fence_struct.present_fence_index);
+	if (ret)
+		return ret;
+
 	if (copy_to_user(argp, &preset_fence_struct, sizeof(preset_fence_struct))) {
 		pr_debug("[FB Driver]: copy_to_user failed! line:%d\n", __LINE__);
 		ret = -EFAULT;
 	}
-	mmprofile_log_ex(ddp_mmp_get_events()->present_fence_get, MMPROFILE_FLAG_PULSE,
-		       preset_fence_struct.present_fence_fd,
-		       preset_fence_struct.present_fence_index);
+
+	return ret;
+}
+
+/* forge p61: same call, 3.18 number and 3.18 member order. */
+int _ioctl_prepare_present_fence_legacy(unsigned long arg)
+{
+	int ret = 0;
+	void __user *argp = (void __user *)arg;
+	struct disp_present_fence_legacy pf;
+
+	if (copy_from_user(&pf, argp, sizeof(pf))) {
+		pr_debug("[FB Driver]: copy_from_user failed! line:%d\n", __LINE__);
+		return -EFAULT;
+	}
+
+	ret = _present_fence_create(pf.session_id, &pf.fence_fd, &pf.index);
+	if (ret)
+		return ret;
+
+	if (copy_to_user(argp, &pf, sizeof(pf))) {
+		pr_debug("[FB Driver]: copy_to_user failed! line:%d\n", __LINE__);
+		ret = -EFAULT;
+	}
 
 	return ret;
 }
@@ -1502,31 +1535,19 @@ static int set_primary_buffer(struct disp_session_input_config *input)
 
 }
 
-int _ioctl_set_input_buffer(unsigned long arg)
+/* forge p61: everything after the copy from user space, so the 3.18-layout
+ * ioctl can translate into this struct and reuse the whole path. */
+static int _set_input_buffer_common(struct disp_session_input_config *session_input)
 {
 	int ret = 0;
-	void __user *argp = (void __user *)arg;
 	unsigned int session_id = 0;
 	struct disp_session_sync_info *session_info;
-	struct disp_session_input_config *session_input;
-
-	session_input = kmalloc(sizeof(*session_input), GFP_KERNEL);
-	if (!session_input)
-		return -ENOMEM;
-
-	if (copy_from_user(session_input, argp, sizeof(*session_input))) {
-		DISPERR("[FB]: copy_from_user failed! line:%d\n", __LINE__);
-		kfree(session_input);
-		return -EFAULT;
-	}
-
 
 	session_input->setter = SESSION_USER_HWC;
 	session_id = session_input->session_id;
 
 	if (is_session_exist(session_id) == 0) {
 		DISPERR("session id: %x not exists\n", session_id);
-		kfree(session_input);
 		return -EFAULT;
 	}
 
@@ -1552,7 +1573,120 @@ int _ioctl_set_input_buffer(unsigned long arg)
 	if (session_info)
 		dprec_done(&session_info->event_setinput, 0, session_input->config_layer_num);
 
+	return ret;
+}
+
+int _ioctl_set_input_buffer(unsigned long arg)
+{
+	int ret;
+	void __user *argp = (void __user *)arg;
+	struct disp_session_input_config *session_input;
+
+	session_input = kmalloc(sizeof(*session_input), GFP_KERNEL);
+	if (!session_input)
+		return -ENOMEM;
+
+	if (copy_from_user(session_input, argp, sizeof(*session_input))) {
+		DISPERR("[FB]: copy_from_user failed! line:%d\n", __LINE__);
+		kfree(session_input);
+		return -EFAULT;
+	}
+
+	ret = _set_input_buffer_common(session_input);
 	kfree(session_input);
+	return ret;
+}
+
+/*
+ * forge p61: the 3.18-layout layer list (nr 206, 1168 bytes).
+ *
+ * Copy each member across by name. The 3.18 struct carries no fence fd —
+ * this driver synchronises on next_buff_idx alone, exactly as 3.18 did,
+ * so nothing is lost. Members that only exist in 4.9 are zeroed, except
+ * ext_sel_layer, whose "unused" value is -1.
+ */
+int _ioctl_set_input_buffer_legacy(unsigned long arg)
+{
+	int ret;
+	unsigned int i, n;
+	void __user *argp = (void __user *)arg;
+	struct disp_session_input_config_legacy *old;
+	struct disp_session_input_config *session_input;
+
+	old = kmalloc(sizeof(*old), GFP_KERNEL);
+	if (!old)
+		return -ENOMEM;
+
+	session_input = kzalloc(sizeof(*session_input), GFP_KERNEL);
+	if (!session_input) {
+		kfree(old);
+		return -ENOMEM;
+	}
+
+	if (copy_from_user(old, argp, sizeof(*old))) {
+		DISPERR("[FB]: copy_from_user failed! line:%d\n", __LINE__);
+		ret = -EFAULT;
+		goto out;
+	}
+
+	session_input->session_id = old->session_id;
+	n = old->config_layer_num;
+	if (n > ARRAY_SIZE(old->config))
+		n = ARRAY_SIZE(old->config);
+	session_input->config_layer_num = n;
+
+	for (i = 0; i < n; i++) {
+		struct disp_input_config_legacy *s = &old->config[i];
+		struct disp_input_config *d = &session_input->config[i];
+
+		d->src_base_addr = s->src_base_addr;
+		d->src_phy_addr = s->src_phy_addr;
+		d->buffer_source = s->buffer_source;
+		d->security = s->security;
+		d->src_fmt = s->src_fmt;
+		d->src_alpha = s->src_alpha;
+		d->dst_alpha = s->dst_alpha;
+		d->yuv_range = s->yuv_range;
+
+		d->layer_rotation = s->layer_rotation;
+		d->layer_type = s->layer_type;
+		d->video_rotation = s->video_rotation;
+
+		d->next_buff_idx = s->next_buff_idx;
+		d->src_fence_fd = MTK_FB_INVALID_FENCE_FD;
+		d->src_fence_struct = NULL;
+
+		d->src_color_key = s->src_color_key;
+		d->frm_sequence = s->frm_sequence;
+
+		d->src_pitch = s->src_pitch;
+		d->src_offset_x = s->src_offset_x;
+		d->src_offset_y = s->src_offset_y;
+		d->src_width = s->src_width;
+		d->src_height = s->src_height;
+		d->tgt_offset_x = s->tgt_offset_x;
+		d->tgt_offset_y = s->tgt_offset_y;
+		d->tgt_width = s->tgt_width;
+		d->tgt_height = s->tgt_height;
+
+		d->alpha_enable = s->alpha_enable;
+		d->alpha = s->alpha;
+		d->sur_aen = s->sur_aen;
+		d->src_use_color_key = s->src_use_color_key;
+		d->layer_id = s->layer_id;
+		d->layer_enable = s->layer_enable;
+		d->src_direct_link = s->src_direct_link;
+
+		d->isTdshp = s->isTdshp;
+		d->identity = s->identity;
+		d->connected_type = s->connected_type;
+		d->ext_sel_layer = -1;
+	}
+
+	ret = _set_input_buffer_common(session_input);
+out:
+	kfree(session_input);
+	kfree(old);
 	return ret;
 }
 
@@ -2265,6 +2399,10 @@ long mtk_disp_mgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		return _ioctl_prepare_buffer(arg, PREPARE_INPUT_FENCE);
 	case DISP_IOCTL_SET_INPUT_BUFFER:
 		return _ioctl_set_input_buffer(arg);
+	case DISP_IOCTL_SET_INPUT_BUFFER_LEGACY:	/* forge p61 */
+		return _ioctl_set_input_buffer_legacy(arg);
+	case DISP_IOCTL_GET_PRESENT_FENCE_LEGACY:	/* forge p61 */
+		return _ioctl_prepare_present_fence_legacy(arg);
 	case DISP_IOCTL_WAIT_FOR_VSYNC:
 		return _ioctl_wait_vsync(arg);
 	case DISP_IOCTL_GET_SESSION_INFO:
