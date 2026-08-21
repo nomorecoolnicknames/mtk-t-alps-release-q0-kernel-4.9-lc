@@ -610,6 +610,71 @@ void ddp_process_dbg_opt(const char *opt)
 		return;
 	}
 
+	/* forge p65: paint the OVL's own background colour and turn every
+	 * layer off. The overlay then emits a solid colour with no buffer,
+	 * no M4U mapping and no composition involved, so whatever reaches
+	 * the panel tests exactly one thing: the path from OVL through
+	 * COLOR/CCORR/DITHER/RDMA/DSI to the glass. Red means that whole
+	 * path is healthy and the black screen is a content problem;
+	 * black means the fault is below the overlay. */
+	if (0 == strncmp(opt, "forgered", 8)) {
+		DISP_CPU_REG_SET(DISP_REG_OVL_ROI_BGCLR, 0xffff0000);
+		DISP_CPU_REG_SET(DISP_REG_OVL_SRC_CON, 0x0);
+		pr_err("forge-disp: BGCLR=0x%x SRC_CON=0x%x (solid red, layers off)\n",
+		       DISP_REG_GET(DISP_REG_OVL_ROI_BGCLR),
+		       DISP_REG_GET(DISP_REG_OVL_SRC_CON));
+		return;
+	}
+
+	/* forge p65: force the crossbar into the wiring the primary path
+	 * actually needs. On a fresh boot DSI0_SEL reads 0, which selects
+	 * UFOE — and this chip has no UFOE at all (its reg entry in the
+	 * DISPSYS node is <0 0>), so the DSI is listening to nothing. The
+	 * same registers were observed in the other state later in the same
+	 * session, so something does reconnect the path eventually; this
+	 * puts it there on demand. */
+	/* forge p66: reconnect the primary path through the path manager,
+	 * then show what the crossbar ended up as. */
+	if (0 == strncmp(opt, "forgeconnect", 12)) {
+		extern void forge_reconnect_primary(void);
+
+		pr_err("forge-disp: route before OVL0_MOUT=0x%x DITHER_MOUT=0x%x COLOR0_SEL=0x%x DSI0_SEL=0x%x RDMA0_SOUT=0x%x\n",
+		       DISP_REG_GET(DISP_REG_CONFIG_DISP_OVL0_MOUT_EN),
+		       DISP_REG_GET(DISP_REG_CONFIG_DISP_DITHER_MOUT_EN),
+		       DISP_REG_GET(DISP_REG_CONFIG_DISP_COLOR0_SEL_IN),
+		       DISP_REG_GET(DISP_REG_CONFIG_DSI0_SEL_IN),
+		       DISP_REG_GET(DISP_REG_CONFIG_DISP_RDMA0_SOUT_SEL_IN));
+		forge_reconnect_primary();
+		pr_err("forge-disp: route after  OVL0_MOUT=0x%x DITHER_MOUT=0x%x COLOR0_SEL=0x%x DSI0_SEL=0x%x RDMA0_SOUT=0x%x\n",
+		       DISP_REG_GET(DISP_REG_CONFIG_DISP_OVL0_MOUT_EN),
+		       DISP_REG_GET(DISP_REG_CONFIG_DISP_DITHER_MOUT_EN),
+		       DISP_REG_GET(DISP_REG_CONFIG_DISP_COLOR0_SEL_IN),
+		       DISP_REG_GET(DISP_REG_CONFIG_DSI0_SEL_IN),
+		       DISP_REG_GET(DISP_REG_CONFIG_DISP_RDMA0_SOUT_SEL_IN));
+		return;
+	}
+
+	if (0 == strncmp(opt, "forgeroute", 10)) {
+		pr_err("forge-disp: route before OVL0_MOUT=0x%x DITHER_MOUT=0x%x COLOR0_SEL=0x%x DSI0_SEL=0x%x RDMA0_SOUT=0x%x\n",
+		       DISP_REG_GET(DISP_REG_CONFIG_DISP_OVL0_MOUT_EN),
+		       DISP_REG_GET(DISP_REG_CONFIG_DISP_DITHER_MOUT_EN),
+		       DISP_REG_GET(DISP_REG_CONFIG_DISP_COLOR0_SEL_IN),
+		       DISP_REG_GET(DISP_REG_CONFIG_DSI0_SEL_IN),
+		       DISP_REG_GET(DISP_REG_CONFIG_DISP_RDMA0_SOUT_SEL_IN));
+		DISP_CPU_REG_SET(DISP_REG_CONFIG_DISP_OVL0_MOUT_EN, 0x1);
+		DISP_CPU_REG_SET(DISP_REG_CONFIG_DISP_DITHER_MOUT_EN, 0x1);
+		DISP_CPU_REG_SET(DISP_REG_CONFIG_DISP_COLOR0_SEL_IN, 0x1);
+		DISP_CPU_REG_SET(DISP_REG_CONFIG_DSI0_SEL_IN, 0x1);
+		DISP_CPU_REG_SET(DISP_REG_CONFIG_DISP_RDMA0_SOUT_SEL_IN, 0x2);
+		pr_err("forge-disp: route after  OVL0_MOUT=0x%x DITHER_MOUT=0x%x COLOR0_SEL=0x%x DSI0_SEL=0x%x RDMA0_SOUT=0x%x\n",
+		       DISP_REG_GET(DISP_REG_CONFIG_DISP_OVL0_MOUT_EN),
+		       DISP_REG_GET(DISP_REG_CONFIG_DISP_DITHER_MOUT_EN),
+		       DISP_REG_GET(DISP_REG_CONFIG_DISP_COLOR0_SEL_IN),
+		       DISP_REG_GET(DISP_REG_CONFIG_DSI0_SEL_IN),
+		       DISP_REG_GET(DISP_REG_CONFIG_DISP_RDMA0_SOUT_SEL_IN));
+		return;
+	}
+
 	if (0 == strncmp(opt, "forgedump", 9)) {
 		pr_err("forge-disp: MMSYS_CG_CON0=0x%x CG_CON1=0x%x\n",
 		       DISP_REG_GET(DISP_REG_CONFIG_MMSYS_CG_CON0),
@@ -667,6 +732,37 @@ void ddp_process_dbg_opt(const char *opt)
 				       INREG32(&DSI_REG[0]->DSI_START));
 			else
 				pr_err("forge-disp: DSI_REG[0] is NULL\n");
+			/* forge p64: the PHY. Everything upstream can be perfect
+			 * and the panel still sees nothing if MIPITX is not
+			 * driving the lanes — the built-in DSI test pattern goes
+			 * through here too, which is why it also stayed black.
+			 * Also read back the BIST registers so "pattern on" is a
+			 * fact rather than an assumption. */
+			{
+				extern struct DSI_PHY_REGS *DSI_PHY_REG[2];
+
+				if (DSI_PHY_REG[0])
+					pr_err("forge-disp: MIPITX CON=0x%x CLK_LANE=0x%x D0=0x%x D1=0x%x D2=0x%x D3=0x%x TOP_CON=0x%x BG_CON=0x%x PLL0=0x%x PLL1=0x%x PLL2=0x%x\n",
+					       INREG32(&DSI_PHY_REG[0]->MIPITX_DSI_CON),
+					       INREG32(&DSI_PHY_REG[0]->MIPITX_DSI_CLOCK_LANE),
+					       INREG32(&DSI_PHY_REG[0]->MIPITX_DSI_DATA_LANE0),
+					       INREG32(&DSI_PHY_REG[0]->MIPITX_DSI_DATA_LANE1),
+					       INREG32(&DSI_PHY_REG[0]->MIPITX_DSI_DATA_LANE2),
+					       INREG32(&DSI_PHY_REG[0]->MIPITX_DSI_DATA_LANE3),
+					       INREG32(&DSI_PHY_REG[0]->MIPITX_DSI_TOP_CON),
+					       INREG32(&DSI_PHY_REG[0]->MIPITX_DSI_BG_CON),
+					       INREG32(&DSI_PHY_REG[0]->MIPITX_DSI_PLL_CON0),
+					       INREG32(&DSI_PHY_REG[0]->MIPITX_DSI_PLL_CON1),
+					       INREG32(&DSI_PHY_REG[0]->MIPITX_DSI_PLL_CON2));
+				if (DSI_REG[0])
+					pr_err("forge-disp: DSI0 BIST_CON=0x%x BIST_PATTERN=0x%x VACT_NL=0x%x HSA=0x%x HBP=0x%x HFP=0x%x\n",
+					       INREG32(&DSI_REG[0]->DSI_BIST_CON),
+					       INREG32(&DSI_REG[0]->DSI_BIST_PATTERN),
+					       INREG32(&DSI_REG[0]->DSI_VACT_NL),
+					       INREG32(&DSI_REG[0]->DSI_HSA_WC),
+					       INREG32(&DSI_REG[0]->DSI_HBP_WC),
+					       INREG32(&DSI_REG[0]->DSI_HFP_WC));
+			}
 		}
 		pr_err("forge-disp: CCORR EN=0x%x CFG=0x%x SIZE=0x%x | DITHER EN=0x%x CFG=0x%x SIZE=0x%x\n",
 		       DISP_REG_GET(DISP_REG_CCORR_EN),
