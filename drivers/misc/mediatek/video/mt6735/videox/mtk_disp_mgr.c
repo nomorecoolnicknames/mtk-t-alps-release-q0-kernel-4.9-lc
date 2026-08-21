@@ -119,6 +119,17 @@ unsigned int is_output_buffer_set = 0;
 
 static int mtk_disp_mgr_open(struct inode *inode, struct file *file)
 {
+	/* forge p50: the hwcomposer blob references "mtk_disp_mgr" but never
+	 * reached our ioctl handler — log who actually gets the node open. */
+	{
+		static int forge_open_spy;
+
+		if (forge_open_spy < 16) {
+			forge_open_spy++;
+			pr_err("forge-spy: disp_mgr opened by %s (pid %d)\n",
+			       current->comm, current->pid);
+		}
+	}
 	return 0;
 }
 
@@ -1777,6 +1788,61 @@ int _ioctl_get_info(unsigned long arg)
 	return ret;
 }
 
+/* forge p52: serve the 18-word 3.18 session-info layout the vendor
+ * hwcomposer calls (see disp_session.h). Same data, original field set. */
+static int _ioctl_get_info_legacy(unsigned long arg)
+{
+	void __user *argp = (void __user *)arg;
+	struct disp_session_info_legacy old;
+	struct disp_session_info info;
+	unsigned int session_id;
+
+	if (copy_from_user(&old, argp, sizeof(old)))
+		return -EFAULT;
+
+	memset(&info, 0, sizeof(info));
+	session_id = old.session_id;
+	info.session_id = session_id;
+
+	if (is_session_exist(session_id) == 0) {
+		pr_err("[session]legacy get_info: session %x does not exist\n",
+		       session_id);
+		return -EFAULT;
+	}
+
+	if (DISP_SESSION_TYPE(session_id) == DISP_SESSION_PRIMARY) {
+		primary_display_get_info(&info);
+	} else if (DISP_SESSION_TYPE(session_id) == DISP_SESSION_MEMORY) {
+		ovl2mem_get_info(&info);
+	} else {
+		pr_err("[session]legacy get_info: bad type 0x%08x\n", session_id);
+		return -EINVAL;
+	}
+
+	old.maxLayerNum = info.maxLayerNum;
+	old.isHwVsyncAvailable = info.isHwVsyncAvailable;
+	old.displayType = info.displayType;
+	old.displayWidth = info.displayWidth;
+	old.displayHeight = info.displayHeight;
+	old.displayFormat = info.displayFormat;
+	old.displayMode = info.displayMode;
+	old.vsyncFPS = info.vsyncFPS;
+	old.physicalWidth = info.physicalWidth;
+	old.physicalHeight = info.physicalHeight;
+	old.isConnected = info.isConnected;
+	old.isHDCPSupported = info.isHDCPSupported;
+	old.isOVLDisabled = info.isOVLDisabled;
+	old.is3DSupport = info.is3DSupport;
+	old.const_layer_num = info.const_layer_num;
+	old.updateFPS = info.updateFPS;
+	old.is_updateFPS_stable = info.is_updateFPS_stable;
+
+	if (copy_to_user(argp, &old, sizeof(old)))
+		return -EFAULT;
+
+	return 0;
+}
+
 int _ioctl_get_is_driver_suspend(unsigned long arg)
 {
 	int ret = 0;
@@ -2171,7 +2237,19 @@ long mtk_disp_mgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	int ret = -1;
 
-	/* DISPMSG("mtk_disp_mgr_ioctl, cmd=%s, arg=0x%08x\n", _session_ioctl_spy(cmd), arg); */
+	/* forge p49: name every call the vendor HAL makes, with the decoded
+	 * nr/size, so an ABI gap shows up as data rather than a guess. The
+	 * first 64 calls only — enough to cover hwcomposer's open path. */
+	{
+		static int forge_spy;
+
+		if (forge_spy < 64) {
+			forge_spy++;
+			pr_err("forge-spy: %s nr=%u size=%u cmd=0x%08x\n",
+			       _session_ioctl_spy(cmd), _IOC_NR(cmd),
+			       _IOC_SIZE(cmd), cmd);
+		}
+	}
 
 	switch (cmd) {
 	case DISP_IOCTL_CREATE_SESSION:
@@ -2191,6 +2269,8 @@ long mtk_disp_mgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		return _ioctl_wait_vsync(arg);
 	case DISP_IOCTL_GET_SESSION_INFO:
 		return _ioctl_get_info(arg);
+	case DISP_IOCTL_GET_SESSION_INFO_LEGACY:	/* forge p52 */
+		return _ioctl_get_info_legacy(arg);
 	case DISP_IOCTL_GET_IS_DRIVER_SUSPEND:
 		return _ioctl_get_is_driver_suspend(arg);
 	case DISP_IOCTL_GET_DISPLAY_CAPS:
@@ -2251,9 +2331,9 @@ long mtk_disp_mgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	default:
 		/* forge p47: decode the number so an ABI mismatch with the
 		 * vendor HAL names itself instead of needing a guess. */
-		DISPMSG("[session]ioctl not supported, 0x%08x (dir=%u type='%c' nr=%u size=%u)\n",
-			cmd, _IOC_DIR(cmd), (char)_IOC_TYPE(cmd), _IOC_NR(cmd),
-			_IOC_SIZE(cmd));
+		pr_err("[session]ioctl not supported, 0x%08x (dir=%u type='%c' nr=%u size=%u)\n",
+		       cmd, _IOC_DIR(cmd), (char)_IOC_TYPE(cmd), _IOC_NR(cmd),
+		       _IOC_SIZE(cmd));
 	}
 
 	return ret;

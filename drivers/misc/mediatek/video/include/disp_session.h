@@ -591,6 +591,41 @@ enum DISP_SELF_REFRESH_TYPE {
  * SurfaceFlinger stopped. The sizes differ, so the legacy number does not
  * collide with GET_IS_DRIVER_SUSPEND and both can be served.
  */
+/*
+ * forge p52: the session-info layout the m5c userspace actually speaks.
+ *
+ * Proven by the in-kernel ioctl spy: hwcomposer calls nr=208 with a
+ * 72-byte payload — the 18-word 3.18 struct. The Q0 tree inserted
+ * physicalWidthUm/physicalHeightUm/density in the middle, so the size (and
+ * therefore the _IOW-encoded number) changed and the call reached no
+ * handler at all. Without it the HAL had no display size: it reported
+ * garbage attributes, SurfaceFlinger installed a fallback config and
+ * composed at the wrong geometry (the diagonal smear on screen).
+ */
+struct disp_session_info_legacy {
+	unsigned int session_id;
+	unsigned int maxLayerNum;
+	unsigned int isHwVsyncAvailable;
+	unsigned int displayType;
+	unsigned int displayWidth;
+	unsigned int displayHeight;
+	unsigned int displayFormat;
+	unsigned int displayMode;
+	unsigned int vsyncFPS;
+	unsigned int physicalWidth;
+	unsigned int physicalHeight;
+	unsigned int isConnected;
+	unsigned int isHDCPSupported;
+	unsigned int isOVLDisabled;
+	unsigned int is3DSupport;
+	unsigned int const_layer_num;
+	unsigned int updateFPS;
+	unsigned int is_updateFPS_stable;
+};
+
+#define DISP_IOCTL_GET_SESSION_INFO_LEGACY	\
+	DISP_IOW(208, struct disp_session_info_legacy)
+
 struct disp_caps_info_legacy {
 	unsigned int output_mode;
 	unsigned int output_pass;
