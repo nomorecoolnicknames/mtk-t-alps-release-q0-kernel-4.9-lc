@@ -7814,6 +7814,29 @@ int primary_display_is_ovl1to2_handle(cmdqRecHandle *handle)
 		return 0;
 }
 
+/*
+ * forge p66: put the DDP crossbar into the scenario this handle was built
+ * for, through the driver rather than by hand.
+ *
+ * The path is created at init but connected only from the resume paths, so
+ * at boot the mux registers keep whatever the bootloader left: OVL0 feeding
+ * WDMA0 and the DSI fed from UFOE, a block this chip does not have. The
+ * overlay is then configured perfectly and its pixels go to memory, while
+ * the panel keeps scanning the bootloader's last frame. Writing the mux
+ * registers directly does not survive — the driver rewrites them — so ask
+ * the path manager to do it, which also updates the mutex to match.
+ */
+void forge_reconnect_primary(void)
+{
+	if (!pgc->dpmgr_handle) {
+		pr_err("forge-path: no primary handle\n");
+		return;
+	}
+	pr_err("forge-path: reconnecting primary path\n");
+	dpmgr_path_connect(pgc->dpmgr_handle, CMDQ_DISABLE);
+	dpmgr_path_start(pgc->dpmgr_handle, CMDQ_DISABLE);
+}
+
 int primary_display_diagnose(void)
 {
 	int ret = 0;
