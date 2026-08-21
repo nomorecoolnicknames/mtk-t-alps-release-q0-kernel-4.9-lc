@@ -73,6 +73,10 @@
 #ifdef CONFIG_SYNC
 #include <mali_kbase_sync.h>
 #endif /* CONFIG_SYNC */
+#if !defined(CONFIG_SYNC) && defined(CONFIG_SYNC_FILE)
+/* forge p55: 4.9 fence streams */
+#include "mali_kbase_sync_compat.h"
+#endif
 #ifdef CONFIG_PM_DEVFREQ
 #include <linux/devfreq.h>
 #endif /* CONFIG_PM_DEVFREQ */
@@ -981,7 +985,7 @@ copy_failed:
 
 	case KBASE_FUNC_STREAM_CREATE:
 		{
-#ifdef CONFIG_SYNC
+#if defined(CONFIG_SYNC) || defined(CONFIG_SYNC_FILE)
 			struct kbase_uk_stream_create *screate = (struct kbase_uk_stream_create *)args;
 
 			if (sizeof(*screate) != args_size)
@@ -998,13 +1002,14 @@ copy_failed:
 			else
 				ukh->ret = MALI_ERROR_NONE;
 #else /* CONFIG_SYNC */
+			/* forge p54: prove the blob needs this */
 			ukh->ret = MALI_ERROR_FUNCTION_FAILED;
 #endif /* CONFIG_SYNC */
 			break;
 		}
 	case KBASE_FUNC_FENCE_VALIDATE:
 		{
-#ifdef CONFIG_SYNC
+#if defined(CONFIG_SYNC) || defined(CONFIG_SYNC_FILE)
 			struct kbase_uk_fence_validate *fence_validate = (struct kbase_uk_fence_validate *)args;
 
 			if (sizeof(*fence_validate) != args_size)
