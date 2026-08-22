@@ -676,6 +676,15 @@ void ddp_process_dbg_opt(const char *opt)
 	}
 
 	if (0 == strncmp(opt, "forgedump", 9)) {
+		extern void forge_report_mode(void);
+		extern unsigned int forge_irq_count[DISP_MODULE_NUM];
+
+		forge_report_mode();	/* forge p67 */
+		pr_err("forge-irq: RDMA0=%u DSI0=%u OVL0=%u MUTEX=%u\n",
+		       forge_irq_count[DISP_MODULE_RDMA0],
+		       forge_irq_count[DISP_MODULE_DSI0],
+		       forge_irq_count[DISP_MODULE_OVL0],
+		       forge_irq_count[DISP_MODULE_MUTEX]);
 		pr_err("forge-disp: MMSYS_CG_CON0=0x%x CG_CON1=0x%x\n",
 		       DISP_REG_GET(DISP_REG_CONFIG_MMSYS_CG_CON0),
 		       DISP_REG_GET(DISP_REG_CONFIG_MMSYS_CG_CON1));

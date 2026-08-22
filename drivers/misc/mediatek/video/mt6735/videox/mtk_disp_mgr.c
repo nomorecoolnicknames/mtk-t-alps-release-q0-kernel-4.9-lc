@@ -2281,6 +2281,20 @@ int _ioctl_set_session_mode(unsigned long arg)
 		DISPERR("session id: %x not exists\n", config_info.session_id);
 		return -EFAULT;
 	}
+	/* forge p67: which mode does the vendor HAL actually ask for?
+	 * The crossbar at boot reads as the decouple wiring while the driver
+	 * builds and configures the direct-link scenario, so either the HAL
+	 * requested the switch or the bootloader's wiring was never
+	 * replaced. This says which. 1 = DIRECT_LINK, 2 = DECOUPLE. */
+	{
+		static unsigned int forge_mode_count;
+
+		forge_mode_count++;
+		if (forge_mode_count <= 12 || forge_mode_count % 50 == 0)
+			pr_err("forge-mode: set_session_mode #%u requested=%d session=0x%x\n",
+			       forge_mode_count, config_info.mode, config_info.session_id);
+	}
+
 	if (config_info.mode > DISP_INVALID_SESSION_MODE &&
 		config_info.mode < DISP_SESSION_MODE_NUM) {
 		ret = set_session_mode(&config_info, 0);

@@ -7826,6 +7826,18 @@ int primary_display_is_ovl1to2_handle(cmdqRecHandle *handle)
  * registers directly does not survive — the driver rewrites them — so ask
  * the path manager to do it, which also updates the mutex to match.
  */
+/*
+ * forge p67: what the driver believes the path is, so it can be compared
+ * against what the mux registers actually say. A driver in DIRECT_LINK
+ * against hardware wired for decouple sends the overlay's pixels to
+ * memory while the panel scans something else entirely.
+ */
+void forge_report_mode(void)
+{
+	pr_err("forge-path: driver session_mode=%d pgc->mode=%d handle=%p ovl2mem=%p\n",
+	       pgc->session_mode, pgc->mode, pgc->dpmgr_handle, pgc->ovl2mem_path_handle);
+}
+
 void forge_reconnect_primary(void)
 {
 	if (!pgc->dpmgr_handle) {

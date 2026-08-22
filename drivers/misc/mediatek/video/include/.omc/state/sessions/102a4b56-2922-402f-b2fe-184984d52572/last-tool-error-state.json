@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"O=/srv/forge/android/m5c/k-worktrees/universal; H=$(find $O/drivers/misc/mediatek/video -name disp_session.h | head -1); echo \\\"H=$H\\\"\\nsed -n \\\"$(grep -n 'struct disp_input_config {' $H |...",
+  "error": "Exit code 1\nH=/srv/forge/android/m5c/k-worktrees/universal/drivers/misc/mediatek/video/include/disp_session.h\nsed: -e expression #1, char 1: unknown command: `,'\n=== session_input_config ===\nsed: -e expression #1, char 1: unknown command: `,'",
+  "timestamp": "2026-08-21T14:17:18.986Z",
+  "retry_count": 1
+}

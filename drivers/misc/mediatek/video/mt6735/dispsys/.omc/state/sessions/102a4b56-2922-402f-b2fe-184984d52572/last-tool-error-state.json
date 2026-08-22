@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"cd /srv/forge/android/m5c/kernel-m5c-4.9-lc/drivers/misc/mediatek/video/mt6735/dispsys; grep -n \\\"module_list_scenario\\\\[DDP_SCENARIO_MAX\\\\]\\\\|module_list_scenario\\\\[\\\\] =\\\\|static.*module...",
+  "error": "Exit code 1\nsed: -e expression #1, char 1: unknown command: `,'",
+  "timestamp": "2026-08-21T15:40:19.484Z",
+  "retry_count": 1
+}

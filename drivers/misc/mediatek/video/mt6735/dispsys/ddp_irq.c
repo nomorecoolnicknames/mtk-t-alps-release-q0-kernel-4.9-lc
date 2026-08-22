@@ -292,6 +292,18 @@ void disp_dump_emi_status(void)
 
 }
 
+/*
+ * forge p67: count display interrupts per module.
+ *
+ * In video mode the vsync SurfaceFlinger waits on is the RDMA0 frame-done
+ * interrupt. Frames stop arriving a few seconds into boot with nobody
+ * blocked anywhere — SurfaceFlinger idle in epoll, the animation thread
+ * sleeping — which is what a dead vsync looks like from userspace. These
+ * counters say whether the interrupts are still coming, without adding a
+ * print per interrupt.
+ */
+unsigned int forge_irq_count[DISP_MODULE_NUM];
+
 irqreturn_t disp_irq_handler(int irq, void *dev_id)
 {
 	enum DISP_MODULE_ENUM module = DISP_MODULE_UNKNOWN;
@@ -302,6 +314,16 @@ irqreturn_t disp_irq_handler(int irq, void *dev_id)
 
 	DISPDBG("disp_irq_handler, irq=%d, module=%s\n", irq, disp_irq_module(irq));
 	mmprofile_log_ex(ddp_mmp_get_events()->DDP_IRQ, MMPROFILE_FLAG_START, irq, 0);
+
+	/* forge p67 */
+	if (irq == dispsys_irq[DISP_REG_RDMA0])
+		forge_irq_count[DISP_MODULE_RDMA0]++;
+	else if (irq == dispsys_irq[DISP_REG_DSI0])
+		forge_irq_count[DISP_MODULE_DSI0]++;
+	else if (irq == dispsys_irq[DISP_REG_OVL0])
+		forge_irq_count[DISP_MODULE_OVL0]++;
+	else if (irq == dispsys_irq[DISP_REG_MUTEX])
+		forge_irq_count[DISP_MODULE_MUTEX]++;
 
 	if (irq == dispsys_irq[DISP_REG_DSI0]) {
 		module = DISP_MODULE_DSI0;
