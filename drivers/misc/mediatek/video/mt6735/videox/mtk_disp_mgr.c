@@ -2068,6 +2068,13 @@ static int _ioctl_get_display_caps_legacy(unsigned long arg)
 	if (copy_from_user(&caps, argp, sizeof(caps)))
 		return -EFAULT;
 
+	/* forge p67: is_support_frame_cfg_ioctl and is_output_rotated are
+	 * only assigned under ifdefs, so without this they would be handed
+	 * back to user space exactly as they arrived — whatever the HAL had
+	 * in that memory. A non-zero is_support_frame_cfg_ioctl would send
+	 * the HAL down the frame-config ioctl instead of SET_INPUT_BUFFER. */
+	memset(&caps, 0, sizeof(caps));
+
 #ifdef DISP_HW_MODE_CAP
 	caps.output_mode = DISP_HW_MODE_CAP;
 #else
