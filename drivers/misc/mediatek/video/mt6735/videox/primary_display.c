@@ -7832,6 +7832,26 @@ int primary_display_is_ovl1to2_handle(cmdqRecHandle *handle)
  * against hardware wired for decouple sends the overlay's pixels to
  * memory while the panel scans something else entirely.
  */
+/*
+ * forge p71: release every outstanding fence of a primary layer, once.
+ *
+ * The driver releases layer fences as cur_fence minus one, so the frame
+ * currently on the panel stays held until the next one is configured.
+ * The vendor HWC will not configure the next one until an overlay comes
+ * back, and the overlay comes back with that very fence — so once the
+ * pipeline pauses, neither side can move. This breaks the tie by hand to
+ * test whether that is really the loop we are stuck in.
+ */
+void forge_release_layer(unsigned int layer)
+{
+	if (layer >= PRIMARY_DISPLAY_SESSION_LAYER_COUNT) {
+		pr_err("forge-rel: bad layer %u\n", layer);
+		return;
+	}
+	pr_err("forge-rel: releasing all fences of layer %u\n", layer);
+	mtkfb_release_layer_fence(primary_session_id, layer);
+}
+
 void forge_report_mode(void)
 {
 	pr_err("forge-path: driver session_mode=%d pgc->mode=%d handle=%p ovl2mem=%p\n",

@@ -639,6 +639,17 @@ void ddp_process_dbg_opt(const char *opt)
 	 * The idle manager parks the path in decouple and the HAL then waits
 	 * for an overlay it can never get, so it never asks to come back.
 	 * This asks on its behalf: forgemode:1 = direct link, 2 = decouple. */
+	if (0 == strncmp(opt, "forgerel:", 9)) {
+		extern void forge_release_layer(unsigned int layer);
+		char *rp = (char *)opt + 9;
+		unsigned long int rl = 0;
+
+		if (kstrtoul(rp, 10, &rl))
+			pr_err("forge-disp: bad forgerel arg\n");
+		forge_release_layer((unsigned int)rl);
+		return;
+	}
+
 	if (0 == strncmp(opt, "forgemode:", 10)) {
 		char *fp = (char *)opt + 10;
 		unsigned long int fm = 0;
