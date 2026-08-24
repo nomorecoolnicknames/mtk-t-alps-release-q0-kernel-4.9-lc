@@ -1945,6 +1945,7 @@ static int _ioctl_get_info_legacy(unsigned long arg)
 	struct disp_session_info_legacy old;
 	struct disp_session_info info;
 	unsigned int session_id;
+	int info_ret = 0;	/* forge p76 */
 
 	if (copy_from_user(&old, argp, sizeof(old)))
 		return -EFAULT;
@@ -1960,12 +1961,34 @@ static int _ioctl_get_info_legacy(unsigned long arg)
 	}
 
 	if (DISP_SESSION_TYPE(session_id) == DISP_SESSION_PRIMARY) {
-		primary_display_get_info(&info);
+		info_ret = primary_display_get_info(&info);
 	} else if (DISP_SESSION_TYPE(session_id) == DISP_SESSION_MEMORY) {
-		ovl2mem_get_info(&info);
+		info_ret = ovl2mem_get_info(&info);
 	} else {
 		pr_err("[session]legacy get_info: bad type 0x%08x\n", session_id);
 		return -EINVAL;
+	}
+
+	/*
+	 * forge p76: this field is what the vendor HWC waits on.
+	 *
+	 * DispDevice::getAvailableOverlayInput() issues this very ioctl and
+	 * returns the second word of the struct — maxLayerNum — straight to
+	 * OverlayEngine::waitUntilAvailable(), which spins 1000 times at 5ms
+	 * while it reads zero and then gives up. So a zero here is what
+	 * stalls composition, and primary_display_get_info() can leave it
+	 * zero by returning early when the LCM params are missing, which the
+	 * caller was not checking. Say what is actually being handed over.
+	 */
+	{
+		static unsigned int forge_info_count;
+
+		forge_info_count++;
+		if (forge_info_count <= 6 || forge_info_count % 200 == 0)
+			pr_err("forge-info: #%u session=0x%x ret=%d maxLayerNum=%u vsync=%u w=%u h=%u\n",
+			       forge_info_count, session_id, info_ret,
+			       info.maxLayerNum, info.isHwVsyncAvailable,
+			       info.displayWidth, info.displayHeight);
 	}
 
 	old.maxLayerNum = info.maxLayerNum;
