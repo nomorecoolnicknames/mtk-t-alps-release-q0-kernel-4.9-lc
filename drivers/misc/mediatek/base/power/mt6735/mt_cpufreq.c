@@ -223,6 +223,24 @@ extern void forge_kmark_ptr(int ms, unsigned long v);
 
 /* DVFS OPP table */
 #ifdef CONFIG_MACH_MT6735M
+/*
+ * forge: operating points above the fused segment, added on request.
+ *
+ * This part reports segment_code 0x52, which _mt_cpufreq_get_cpu_level
+ * maps to CPU_LEVEL_2, commented "35P+ 1.25GHz" — and 1248MHz is the
+ * highest frequency MediaTek defines for MT6735M at all. There is no
+ * 1.3/1.45/1.5GHz table to switch to here; those belong to the MT6735
+ * and MT6753 blocks, for silicon binned differently.
+ *
+ * So these two points are invented, not enabled. Worse, MAX_VPROC_VOLT
+ * is 125000 and the existing top OPP already sits on it, so both new
+ * points run at the same 1.25V the part uses for 1248MHz — no extra
+ * voltage for 8% and 20% more clock. Expect them to be marginal; the
+ * failure mode is random reboots and memory corruption, not a clean
+ * error. Cap with scaling_max_freq to test one step at a time.
+ */
+#define CPU_DVFS_FREQ_OC0 (1495000)	/* KHz, forge: overclock */
+#define CPU_DVFS_FREQ_OC1 (1352000)	/* KHz, forge: overclock */
 #define CPU_DVFS_FREQ0_1 (1248000)	/* KHz */
 #define CPU_DVFS_FREQ0   (1144000)	/* KHz */
 #define CPU_DVFS_FREQ1_1 (1092000)	/* KHz */
@@ -757,6 +775,8 @@ static struct mt_cpu_freq_info opp_tbl_e1_1[] = {
 
 /* CPU LEVEL 2, 1.25GHz segment */
 static struct mt_cpu_freq_info opp_tbl_e1_2[] = {
+	OP(CPU_DVFS_FREQ_OC0, 125000),	/* forge: 1495MHz, invented */
+	OP(CPU_DVFS_FREQ_OC1, 125000),	/* forge: 1352MHz, invented */
 	OP(CPU_DVFS_FREQ0_1, 125000),
 	OP(CPU_DVFS_FREQ1,  121875),
 	OP(CPU_DVFS_FREQ5,  118750),
