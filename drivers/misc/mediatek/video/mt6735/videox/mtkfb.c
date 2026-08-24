@@ -504,7 +504,24 @@ static int mtkfb_pan_display_impl(struct fb_var_screeninfo *var, struct fb_info 
 
 	input->alpha = 0xFF;
 	input->next_buff_idx = -1;
-	src_pitch = ALIGN_TO(var->xres, MTK_FB_ALIGNMENT);
+	/*
+	 * forge p73: scan at the pitch the rows are actually written with.
+	 *
+	 * With the vendor hwcomposer out of the way SurfaceFlinger reaches
+	 * the panel through this path, and its rows land packed at
+	 * xres * bpp/8. Rounding the pitch up to MTK_FB_ALIGNMENT told the
+	 * overlay to step 736 pixels per line instead of 720, so every line
+	 * started 16 pixels further along than the one above it — the
+	 * diagonal shear on the panel. Reading a raw fb0 dump back at 720
+	 * renders perfectly while reading it at 736 reproduces the shear,
+	 * which is what pins the pitch as the wrong half of the pair.
+	 *
+	 * Only the scan pitch changes here. The allocation geometry and
+	 * fix.line_length are left alone: making those 720 as well shrinks
+	 * the framebuffer the writer expects and it stops drawing entirely
+	 * (measured — all three pages went black).
+	 */
+	src_pitch = var->xres;
 	input->src_pitch = src_pitch;
 
 	session_input->config_layer_num++;
