@@ -45,6 +45,26 @@
 
 enum TONE_ENUM { PURP_TONE = 0, SKIN_TONE = 1, GRASS_TONE = 2, SKY_TONE = 3 };
 
+/*
+ * forge p69: the 3.18 layout of DISP_PQ_PARAM.
+ *
+ * 4.9 appended u4ColorLUT to the end, which moved sizeof from 56 to 60 and
+ * therefore moved the _IOW numbers of every ioctl that carries this struct.
+ * The vendor HAL still sends the 56-byte form, so SET_PQPARAM,
+ * SET_PQ_CAM_PARAM and SET_PQ_GAL_PARAM all reached no handler and were
+ * refused as unknown ioctls. Field order is the 3.18 one verbatim.
+ */
+struct DISP_PQ_PARAM_LEGACY {
+	unsigned int u4SHPGain;
+	unsigned int u4SatGain;
+	unsigned int u4PartialY;
+	unsigned int u4HueAdj[PQ_HUE_ADJ_PHASE_CNT];
+	unsigned int u4SatAdj[PQ_SAT_ADJ_PHASE_CNT];
+	unsigned int u4Contrast;
+	unsigned int u4Brightness;
+	unsigned int u4Ccorr;
+};
+
 struct DISP_PQ_PARAM {
 	unsigned int u4SHPGain;  /* 0 : min , 9 : max. */
 	unsigned int u4SatGain;  /* 0 : min , 9 : max. */
