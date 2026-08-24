@@ -34,7 +34,6 @@ obj-$(CONFIG_MEDIATEK_SOLUTION) += sched/
 obj-$(CONFIG_MTK_FREQ_HOPPING) += freqhopping/
 obj-$(CONFIG_MMC_MTK_SDIO) += mtk_sdio/
 obj-$(CONFIG_MTK_COMBO) += connectivity/
-obj-$(CONFIG_MTK_FMRADIO) += fmradio/
 obj-$(CONFIG_MTK_CONN_MD) += conn_md/
 obj-$(CONFIG_MTK_BTIF) += btif/
 obj-$(CONFIG_MTK_UNIFIED_DEBUG_INTERFACE) += udi/
