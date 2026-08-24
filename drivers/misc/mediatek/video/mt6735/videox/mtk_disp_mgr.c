@@ -2403,9 +2403,21 @@ const char *_session_ioctl_spy(unsigned int cmd)
 	}
 }
 
+/*
+ * forge p70: count every disp_mgr ioctl by number.
+ *
+ * The vendor HWC spins on "Waiting for available OVL" thousands of times
+ * while nothing composes, and the one-shot spy is long exhausted by then,
+ * so it cannot say what the HAL is actually asking for during the wait.
+ * A counter per _IOC_NR costs nothing and answers it from the dump.
+ */
+unsigned int forge_ioctl_nr_count[256];
+
 long mtk_disp_mgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	int ret = -1;
+
+	forge_ioctl_nr_count[_IOC_NR(cmd) & 0xff]++;	/* forge p70 */
 
 	/* forge p49: name every call the vendor HAL makes, with the decoded
 	 * nr/size, so an ABI gap shows up as data rather than a guess. The

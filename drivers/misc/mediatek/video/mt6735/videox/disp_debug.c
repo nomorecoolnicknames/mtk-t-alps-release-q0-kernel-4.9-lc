@@ -635,6 +635,28 @@ void ddp_process_dbg_opt(const char *opt)
 	 * puts it there on demand. */
 	/* forge p66: reconnect the primary path through the path manager,
 	 * then show what the crossbar ended up as. */
+	/* forge p70: force the session mode through the driver, with force=1.
+	 * The idle manager parks the path in decouple and the HAL then waits
+	 * for an overlay it can never get, so it never asks to come back.
+	 * This asks on its behalf: forgemode:1 = direct link, 2 = decouple. */
+	if (0 == strncmp(opt, "forgemode:", 10)) {
+		char *fp = (char *)opt + 10;
+		unsigned long int fm = 0;
+
+		if (kstrtoul(fp, 10, &fm))
+			pr_err("forge-disp: bad forgemode arg\n");
+		pr_err("forge-disp: forcing session mode -> %lu\n", fm);
+		primary_display_switch_mode((int)fm,
+					    MAKE_DISP_SESSION(DISP_SESSION_PRIMARY, 0), 1);
+		pr_err("forge-disp: route now OVL0_MOUT=0x%x DITHER_MOUT=0x%x COLOR0_SEL=0x%x DSI0_SEL=0x%x RDMA0_SOUT=0x%x\n",
+		       DISP_REG_GET(DISP_REG_CONFIG_DISP_OVL0_MOUT_EN),
+		       DISP_REG_GET(DISP_REG_CONFIG_DISP_DITHER_MOUT_EN),
+		       DISP_REG_GET(DISP_REG_CONFIG_DISP_COLOR0_SEL_IN),
+		       DISP_REG_GET(DISP_REG_CONFIG_DSI0_SEL_IN),
+		       DISP_REG_GET(DISP_REG_CONFIG_DISP_RDMA0_SOUT_SEL_IN));
+		return;
+	}
+
 	if (0 == strncmp(opt, "forgeconnect", 12)) {
 		extern void forge_reconnect_primary(void);
 
@@ -678,8 +700,23 @@ void ddp_process_dbg_opt(const char *opt)
 	if (0 == strncmp(opt, "forgedump", 9)) {
 		extern void forge_report_mode(void);
 		extern unsigned int forge_irq_count[DISP_MODULE_NUM];
+		extern unsigned int forge_ioctl_nr_count[256];
+		int fi;
+		char fbuf[240];
+		int fn = 0;
 
 		forge_report_mode();	/* forge p67 */
+		/* forge p70: which ioctls is the HAL actually making while it
+		 * waits? Only the numbers that were used are printed. */
+		for (fi = 0; fi < 256; fi++) {
+			if (!forge_ioctl_nr_count[fi])
+				continue;
+			if (fn > (int)sizeof(fbuf) - 24)
+				break;
+			fn += snprintf(fbuf + fn, sizeof(fbuf) - fn, "%d:%u ",
+				       fi, forge_ioctl_nr_count[fi]);
+		}
+		pr_err("forge-ioctl: %s\n", fbuf);
 		pr_err("forge-irq: RDMA0=%u DSI0=%u OVL0=%u MUTEX=%u\n",
 		       forge_irq_count[DISP_MODULE_RDMA0],
 		       forge_irq_count[DISP_MODULE_DSI0],
