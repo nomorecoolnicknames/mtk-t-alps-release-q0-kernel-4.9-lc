@@ -13,6 +13,7 @@
 
 #include <linux/kernel.h>
 #include <linux/types.h>
+#include <linux/slab.h>	/* forge p89: kzalloc/kfree for the TDSHP legacy copy */
 #include <linux/spinlock.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
@@ -3341,6 +3342,35 @@ int disp_color_ioctl(enum DISP_MODULE_ENUM module, unsigned int msg,
 		}
 		tdshp_index_init = 1;
 		break;
+
+	/*
+	 * forge p89: SET_TDSHPINDEX in the 3.18 3984-byte form (entry[12][83]).
+	 * Copy the 83 columns the HAL fills into the first 83 of the 4.9
+	 * entry[12][146]; the 63 TDSHP_3_0 columns the HAL never learned about
+	 * are zeroed (disabled) — the same "no opinion on a field that did not
+	 * exist" principle as the p69 PQPARAM legacy path.
+	 */
+	case DISP_IOCTL_SET_TDSHPINDEX_LEGACY: {
+		struct DISPLAY_TDSHP_T_LEGACY *old;
+		int row;
+
+		old = kzalloc(sizeof(*old), GFP_KERNEL);
+		if (!old)
+			return -ENOMEM;
+		if (copy_from_user(old, (void *)arg, sizeof(*old))) {
+			COLOR_ERR("legacy SET_TDSHPINDEX copy from user fail");
+			kfree(old);
+			return -EFAULT;
+		}
+		tdshp_index = get_TDSHP_index();
+		memset(tdshp_index, 0, sizeof(struct DISPLAY_TDSHP_T));
+		for (row = 0; row < THSHP_TUNING_INDEX; row++)
+			memcpy(tdshp_index->entry[row], old->entry[row],
+			       THSHP_PARAM_MAX_LEGACY * sizeof(unsigned int));
+		kfree(old);
+		tdshp_index_init = 1;
+		break;
+	}
 
 	case DISP_IOCTL_GET_TDSHPINDEX:
 

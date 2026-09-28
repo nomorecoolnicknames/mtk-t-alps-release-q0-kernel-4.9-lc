@@ -87,10 +87,19 @@
 	.endm
 
 	.macro	forge_mark, ms
+#ifdef CONFIG_MACH_MT6753_M5S
+	/* m5s: 3GB map, scratch pages in range 3 (0xa0000000..0xff370000),
+	 * above the ccci alloc window (<=0xc0000000). lsl-16 immediates. */
+	movz	x14, #0xf000, lsl #16		// candidate D: 0xf0000000
+	forge_stamp \ms
+	movz	x14, #0xff00, lsl #16		// candidate E: 0xff000000
+	forge_stamp \ms
+#else
 	movz	x14, #0x7f00, lsl #16		// candidate D: 0x7f000000
 	forge_stamp \ms
 	movz	x14, #0xb000, lsl #16		// candidate E: 0xb0000000
 	forge_stamp \ms
+#endif
 	dsb	sy
 	.endm
 

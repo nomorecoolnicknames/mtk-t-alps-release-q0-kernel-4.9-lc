@@ -71,8 +71,16 @@ extern void __iomem *toprgu_base;	/* defined below (line ~96) */
  * lottery (p32/p33/p34 captures all came back 0xFF after cold-offs).
  * Layout in expdb: offset 0 = 1KB marker page, offset 1MB = 64KB rc49. */
 static struct block_device *forge_expdb_bdev;
-#define FORGE_EXPDB_DEV		MKDEV(179, 10)	/* expdb = mmcblk0p10, 10MB */
+/* expdb = mmcblk0p10 (10MB) on BOTH m5c and m5s — verified against the
+ * M1612 live GPT (scatter order proinfo,nvram,protect1,protect2,lk,para,
+ * boot,recovery,logo,expdb -> p10) and the m5c TWRP by-name listing. */
+#define FORGE_EXPDB_DEV		MKDEV(179, 10)
+#ifdef CONFIG_MACH_MT6753_M5S
+/* m5s: marker page A lives at 0xf0000000 (3GB map, range 3) */
+#define FORGE_MARK_PHYS		0xf0000000UL
+#else
 #define FORGE_MARK_PHYS		0x7f000000UL
+#endif
 #define FORGE_RC_PHYS		0x5f000000UL
 #define FORGE_RC_SIZE		(64 * 1024)
 /* p37: 2KB — bytes 0..1023 = live slots, 1024..2047 = previous-boot copy

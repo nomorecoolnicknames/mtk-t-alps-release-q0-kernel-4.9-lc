@@ -165,6 +165,23 @@ struct DISPLAY_TDSHP_T {
 };
 #define DISPLAY_TDSHP struct DISPLAY_TDSHP_T
 
+/*
+ * forge p89: the 3.18 layout the vendor HAL actually sends for SET_TDSHPINDEX
+ * (ioctl nr 65). Between 3.18 and 4.9 THSHP_PARAM_MAX grew 83 -> 146
+ * (TDSHP_3_0 added 63 sharpening params), so the struct grew 3984 -> 7008
+ * bytes; the _IOW number encodes the size, so the HAL's call landed in the
+ * default case and was rejected. THSHP_TUNING_INDEX (12) is unchanged.
+ * Verified: 12 * 83 * 4 = 3984, exactly what the HAL sends. Translation is
+ * clean — copy the 83 columns the HAL fills into the first 83 of 146 and
+ * zero the 63 new ones (the panel PQ this HAL was built for has no opinion
+ * on TDSHP_3_0 params that did not exist then; zero = disabled, the safe
+ * default).
+ */
+#define THSHP_PARAM_MAX_LEGACY 83
+struct DISPLAY_TDSHP_T_LEGACY {
+	unsigned int entry[THSHP_TUNING_INDEX][THSHP_PARAM_MAX_LEGACY];
+};
+
 enum PQ_DS_index_t {
 DS_en = 0,
 	iUpSlope,

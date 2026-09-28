@@ -733,6 +733,30 @@ void ddp_process_dbg_opt(const char *opt)
 		       forge_irq_count[DISP_MODULE_DSI0],
 		       forge_irq_count[DISP_MODULE_OVL0],
 		       forge_irq_count[DISP_MODULE_MUTEX]);
+		{
+			/* forge p86: underflow measured IN the IRQ handler, not
+			 * polled. INTSTA is cleared every frame, so a poll reads
+			 * ~0 (p80's RDMA0 INTSTA=0x0 was that artefact). These
+			 * latch the bits when the IRQ fires. Normalise by
+			 * ovl0_frames. rdma_uflow = RDMA0's own bit-4 counter. */
+			extern unsigned int forge_ovl0_frame_done;
+			extern unsigned int forge_ovl0_frame_underrun;
+			extern unsigned int forge_ovl0_rdma_eof_abnormal[4];
+			extern unsigned int forge_ovl0_rdma_fifo_underflow[4];
+			extern unsigned int rdma_underflow_irq_cnt[];
+
+			pr_err("forge-uflow: ovl0_frames=%u frame_underrun=%u rdma0_uflow=%u\n",
+			       forge_ovl0_frame_done, forge_ovl0_frame_underrun,
+			       rdma_underflow_irq_cnt[0]);
+			/* bits are per internal-RDMA (0-3), NOT per layer; eof_abnormal
+			 * (bits 5-8) is IRQ-enabled/reliable, fifo_underflow (bits 9-12)
+			 * is best-effort (not IRQ-enabled). See ddp_irq.c p88. */
+			pr_err("forge-uflow: ovl0 rdma_eof_abnormal[0-3]=[%u %u %u %u] rdma_fifo_underflow[0-3]=[%u %u %u %u]\n",
+			       forge_ovl0_rdma_eof_abnormal[0], forge_ovl0_rdma_eof_abnormal[1],
+			       forge_ovl0_rdma_eof_abnormal[2], forge_ovl0_rdma_eof_abnormal[3],
+			       forge_ovl0_rdma_fifo_underflow[0], forge_ovl0_rdma_fifo_underflow[1],
+			       forge_ovl0_rdma_fifo_underflow[2], forge_ovl0_rdma_fifo_underflow[3]);
+		}
 		pr_err("forge-disp: MMSYS_CG_CON0=0x%x CG_CON1=0x%x\n",
 		       DISP_REG_GET(DISP_REG_CONFIG_MMSYS_CG_CON0),
 		       DISP_REG_GET(DISP_REG_CONFIG_MMSYS_CG_CON1));

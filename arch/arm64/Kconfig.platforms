@@ -314,6 +314,16 @@ config MACH_MT6735M
 	  ARM_MT6735_CPUIDLE) dropped; the rest matches arch/arm/Kconfig.
 	  Support for k37mv1 (MT6737M) class boards such as the Meizu M5c.
 
+config MACH_MT6753_M5S
+	bool "Meizu M5s (MT6753) device variant"
+	help
+	  Device marker for the Meizu M5s (M1612, MT6753, 3GB LPDDR3).
+	  The SoC platform stays MACH_MT6735M (same mt6735 family); this
+	  bool only selects the M5s-specific constants that cannot come
+	  from the appended stock DTB: the forge marker scratch pages
+	  (3GB RAM map: top range 0xa0000000..0xff370000) and matching
+	  memblock_reserve windows. Keeps one tree for m5c + m5s.
+
 config MACH_MT3887
 	bool "MediaTek MT3887"
 	select GENERIC_TIME

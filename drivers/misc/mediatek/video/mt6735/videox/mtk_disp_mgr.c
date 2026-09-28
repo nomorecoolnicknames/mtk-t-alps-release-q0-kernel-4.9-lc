@@ -2516,6 +2516,14 @@ long mtk_disp_mgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case DISP_IOCTL_SET_COLOR_REG:
 	case DISP_IOCTL_SET_TDSHPINDEX:
 	case DISP_IOCTL_GET_TDSHPINDEX:
+	/* forge p89: route the 3.18-form PQ ioctls the vendor HAL sends to the
+	 * same path. p69 added the color-driver translation for 60/67/69 but
+	 * never routed them here, so they were still rejected at default; that
+	 * is fixed now, and 65 (TDSHP) is added. */
+	case DISP_IOCTL_SET_PQPARAM_LEGACY:
+	case DISP_IOCTL_SET_PQ_CAM_PARAM_LEGACY:
+	case DISP_IOCTL_SET_PQ_GAL_PARAM_LEGACY:
+	case DISP_IOCTL_SET_TDSHPINDEX_LEGACY:
 	case DISP_IOCTL_SET_PQ_CAM_PARAM:
 	case DISP_IOCTL_GET_PQ_CAM_PARAM:
 	case DISP_IOCTL_SET_PQ_GAL_PARAM:
@@ -2603,6 +2611,14 @@ static long mtk_disp_mgr_compat_ioctl(struct file *file, unsigned int cmd, unsig
 	case DISP_IOCTL_SET_COLOR_REG:
 	case DISP_IOCTL_SET_TDSHPINDEX:
 	case DISP_IOCTL_GET_TDSHPINDEX:
+	/* forge p89: route the 3.18-form PQ ioctls the vendor HAL sends to the
+	 * same path. p69 added the color-driver translation for 60/67/69 but
+	 * never routed them here, so they were still rejected at default; that
+	 * is fixed now, and 65 (TDSHP) is added. */
+	case DISP_IOCTL_SET_PQPARAM_LEGACY:
+	case DISP_IOCTL_SET_PQ_CAM_PARAM_LEGACY:
+	case DISP_IOCTL_SET_PQ_GAL_PARAM_LEGACY:
+	case DISP_IOCTL_SET_TDSHPINDEX_LEGACY:
 	case DISP_IOCTL_SET_PQ_CAM_PARAM:
 	case DISP_IOCTL_GET_PQ_CAM_PARAM:
 	case DISP_IOCTL_SET_PQ_GAL_PARAM:

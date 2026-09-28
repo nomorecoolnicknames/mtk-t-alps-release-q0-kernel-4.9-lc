@@ -235,16 +235,28 @@ u64 __cpu_logical_map[NR_CPUS] = { [0 ... NR_CPUS-1] = INVALID_HWID };
  * FORGE C-level boot markers (m5c 4.9 bring-up, no console).
  * The asm markers in head.S run with the MMU off and physical stores; once
  * the MMU is on they cannot reach the far scratch pages. These stamp the
- * same two validated scratch addresses (0x7f000000, 0xb0000000) from C via
- * early_ioremap (available from early_ioremap_init() onward), so the death
- * point can be bisected across setup_arch. Same on-DRAM layout as head.S:
+ * same two validated scratch addresses from C via early_ioremap (available
+ * from early_ioremap_init() onward), so the death point can be bisected
+ * across setup_arch. Same on-DRAM layout as head.S:
  * "FORGE49\0" at +0, an 8-byte slot per milestone at +8+8*ms (bytes
  * ms,'A','R','A'), so every milestone reached stays visible.
  * Milestones (C): 5=setup_arch/ioremap live, 6=fdt scanned,
  * 7=memblock done, 8=paging_init done, 9=setup_arch end.
+ *
+ * Scratch page addresses are per-device RAM-top (both exact lsl-16
+ * immediates for head.S movz):
+ *  - m5c  (2GB, 0x40000000..0xc0000000): 0x7f000000 / 0xb0000000
+ *  - m5s  (3GB, top range 0xa0000000..0xff370000): 0xf0000000 / 0xff000000
+ *    (above the ccci alloc-ranges ceiling 0xc0000000, inside LK-reported
+ *    DRAM, below the range-3 top 0xff370000)
  */
+#ifdef CONFIG_MACH_MT6753_M5S
+#define FORGE_A	0xf0000000UL
+#define FORGE_B	0xff000000UL
+#else
 #define FORGE_A	0x7f000000UL
 #define FORGE_B	0xb0000000UL
+#endif
 
 static void __init forge_cmark(int ms)
 {
@@ -396,8 +408,8 @@ void __init setup_arch(char **cmdline_p)
 	 * forge_kmark / ram_console write corrupts live kernel or user
 	 * memory. */
 	memblock_reserve(0x5f000000, 0x100000);	/* rc49 64K + pstore 0xe0000 */
-	memblock_reserve(0x7f000000, PAGE_SIZE);	/* marker page A */
-	memblock_reserve(0xb0000000, PAGE_SIZE);	/* marker page B */
+	memblock_reserve(FORGE_A, PAGE_SIZE);	/* marker page A */
+	memblock_reserve(FORGE_B, PAGE_SIZE);	/* marker page B */
 	forge_cmark(7);				/* FORGE: memblock done */
 
 	paging_init();
