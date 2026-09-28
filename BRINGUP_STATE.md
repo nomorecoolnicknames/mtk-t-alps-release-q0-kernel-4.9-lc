@@ -25,3 +25,5 @@ and device runtime remain false. Evidence is added with the final patch.
 - Yassy: opt-in m5s_yassy_defconfig, GPL panel source, LCM registration; the 192-entry init and five-entry suspend tables were verified against the own-board reference.
 
 - MSDC: add mediatek,mt6753-mmc only under CONFIG_MACH_MT6753_M5S. This closes the own DT compatible mismatch; it does not prove storage runtime.
+
+- DDP: correct five physical address entries only under CONFIG_MACH_MT6753_M5S; retain the unresolved TVDPLL discrepancy. A4 compile proof is attached; hardware scanout is not verified.

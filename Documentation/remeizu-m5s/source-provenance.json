@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "private_e0_source_commit": "ba33cd9dbb88995da0dbd5cc6c8c67d653d686c1",
+  "public_ancestry_base": "56ec99e970f1a8da2f2a42bae0ef9536ca766962",
+  "patches": [
+    {
+      "name": "0001-m5s-yassy-lcm-opt-in.patch",
+      "sha256": "668d8aa175eb0c286d4aeab17d9c677ec63aef9317d83a23b96345e868202322"
+    },
+    {
+      "name": "0001-m5s-stock-msdc-binding.patch",
+      "sha256": "77d57be520f610eeda6a0cfa732bcbbeeb9b82f50fa416a5a3afc5af5f285105"
+    },
+    {
+      "name": "0002-m5s-stock-ddp-pa-map.patch",
+      "sha256": "be55acae8a4bd165f93eab2a2fd3226e5f5d47d9cb88162cde0638cff0475ba3"
+    }
+  ],
+  "compile_run": {
+    "recipe_hash": "f47cd1c3c138cd97e49c2824f1dcdc1be74f7ac01fa8a9ef8eac41f7cd6c6c26",
+    "status": "SUCCESS",
+    "timestamp": "2026-09-28T21:39:10Z",
+    "scope": "vmlinux + Image.gz + component objects; no DTB/boot image"
+  },
+  "defconfig": "arch/arm64/configs/m5s_yassy_defconfig",
+  "toolchain_git_commit": "7a28c220c2e9001825328dca6188ef0077a80a88",
+  "toolchain_version": "GCC 4.9.x 20150123 (prerelease)",
+  "toolchain_local_delta": "gcc/g++ wrapper shebang adjusted for Python 3; compiler binaries unchanged",
+  "flash_ready": false,
+  "runtime_verified": false,
+  "source_exclusions": [
+    "Original private BRINGUP_STATE.md operational journal, replaced by public state record"
+  ],
+  "kernel_source_changes_beyond_e0_and_three_patches": false,
+  "publication_compile_or_device_test": false
+}
