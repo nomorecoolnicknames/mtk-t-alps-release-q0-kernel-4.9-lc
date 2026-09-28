@@ -81,6 +81,10 @@ u8 msdc_clock_src[HOST_MAX_NUM] = {
 /**************************************************************/
 const struct of_device_id msdc_of_ids[] = {
 	{   .compatible = DT_COMPATIBLE_NAME, },
+#ifdef CONFIG_MACH_MT6753_M5S
+	/* M1612 stock DTB: msdc0/msdc1; same binding as its 3.18 driver. */
+	{   .compatible = "mediatek,mt6753-mmc", },
+#endif
 	{ },
 };
 
