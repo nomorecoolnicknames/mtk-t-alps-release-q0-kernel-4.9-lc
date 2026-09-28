@@ -28,6 +28,9 @@ enum LCM_DSI_MODE_CON lcm_dsi_mode;
 #define LCD_HW_ID_STATUS_ERROR  0x03
 
 struct LCM_DRIVER *lcm_driver_list[] = {
+#if defined(ILI9881_CA_HD720_DSI_VDO_YASSY)
+	&ili9881_CA_hd720_dsi_vdo_yassy_lcm_drv,
+#endif
 /* Meizu m5c: keep jd9365 first, ili9881c second - the stock LK passes
  * lcm=1-ili9881c_dsi_vdo_dj_hd720 (index 1) on this unit. */
 #if defined(JD9365_DSI_VDO_HOLITECH_HD720)

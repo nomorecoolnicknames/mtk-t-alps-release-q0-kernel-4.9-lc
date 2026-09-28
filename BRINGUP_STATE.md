@@ -21,3 +21,5 @@ and device runtime remain false. Evidence is added with the final patch.
 ## Imported source changes
 
 - E0: M5s defconfig/device marker, 3 GB marker windows and out-of-tree DTC include fix.
+
+- Yassy: opt-in m5s_yassy_defconfig, GPL panel source, LCM registration; the 192-entry init and five-entry suspend tables were verified against the own-board reference.
