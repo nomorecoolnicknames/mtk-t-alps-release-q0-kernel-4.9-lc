@@ -2296,7 +2296,9 @@ static int composite_bind(struct usb_gadget *gadget,
 	struct usb_composite_dev	*cdev;
 	struct usb_composite_driver	*composite = to_cdriver(gdriver);
 	int				status = -ENOMEM;
+	extern void forge_kmark(int ms);	/* forge p39 */
 
+	forge_kmark(118);			/* forge p39: composite_bind in */
 	cdev = kzalloc(sizeof *cdev, GFP_KERNEL);
 	if (!cdev)
 		return status;
@@ -2310,6 +2312,7 @@ static int composite_bind(struct usb_gadget *gadget,
 	status = composite_dev_prepare(composite, cdev);
 	if (status)
 		goto fail;
+	forge_kmark(119);			/* forge p39: dev_prepare done */
 
 	/* composite gadget needs to assign strings for whole device (like
 	 * serial number), register function drivers, potentially update

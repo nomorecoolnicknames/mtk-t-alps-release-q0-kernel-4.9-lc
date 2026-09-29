@@ -1,0 +1,781 @@
+
+/dts-v1/;
+
+#include "mt6755.dtsi"
+#include <wt6755_66_sz_l/cust.dtsi>
+
+/ {
+	model = "Meizu M3 Note M681";
+	compatible = "meizu,m681", "mediatek,mt6755";
+
+	memory@40000000 {
+		device_type = "memory";
+		reg = <0 0x40000000 0 0x3e800000>;
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		reserve-memory-ccci_md3_ccif {
+			compatible = "mediatek,reserve-memory-ccci_md3_ccif";
+			no-map;
+			size = <0 0x00c00000>;
+			alignment = <0 0x2000000>;
+			alloc-ranges = <0 0x40000000 0 0xc0000000>;
+		};
+	};
+
+	/* chosen */
+	chosen {
+		bootargs = "console=tty0 console=ttyMT0,921600n1 root=/dev/ram initrd=0x44000000,0x4b434e loglevel=4 printk.disable_uart=1 maxcpus=1 clk_ignore_unused";
+
+		/* Real M681 boots through LK, so keep the fallback in sync with LK handoff. */
+		/* fb buffer is reserved using this dts by memory node above */
+		atag,videolfb-fb_base_h = <0x0>;
+		atag,videolfb-fb_base_l = <0x7e800000>;
+		atag,videolfb-islcmfound = <1>;
+		atag,videolfb-islcm_inited = <1>;
+		atag,videolfb-fps= <5716>;
+		atag,videolfb-vramSize= <0x01be0000>;
+		atag,videolfb-lcmname= "ili9885_fhd_dsi_vdo_txd1";
+	};
+	led@0 {
+		compatible = "mediatek,red";
+		led_mode = <0>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	led@1 {
+		compatible = "mediatek,green";
+		led_mode = <0>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	led@2 {
+		compatible = "mediatek,blue";
+		led_mode = <0>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	led@3 {
+		compatible = "mediatek,jogball-backlight";
+		led_mode = <0>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	led@4 {
+		compatible = "mediatek,keyboard-backlight";
+		led_mode = <0>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	led@5 {
+		compatible = "mediatek,button-backlight";
+		led_mode = <0>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	led@6 {
+		compatible = "mediatek,lcd-backlight";
+		/* m681 (3.18 v239h12/v240 device-verified): stock DCT = <5> CUST_BLS_PWM.
+		 * <7> is out-of-range -> MODE_NONE -> backlight can never be blanked/dimmed. */
+		led_mode = <5>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	vibrator0:vibrator@0 {
+		compatible = "mediatek,vibrator";
+		vib_timer = <25>;
+		vib_limit = <9>;
+		vib_vol= <5>;
+	};
+	/* m681 audio lane 2026-07-17: this node's props moved to the &accdet
+	 * label override at the end of this file. The old in-root node used
+	 * compatible "mediatek,accdet", which is NOT in the 4.4 driver match
+	 * table (accdet_drv.c:102-106 — mt6735/mt6755/mt6757/mt6580/mt8173
+	 * only), so the driver matched the prop-less mt6755.dtsi node instead
+	 * and these values were never read. */
+/*  start sensor */
+	/* m681 (wt6755_66_sz_l stock, 3.18 v257 record): alsps=CM36686,
+	 * accel+gyro=MPU6515, mag=ST480, all on i2c bus 1. Chip + i2c_addr +
+	 * direction from stock m3note cust_acc.c/cust_gyro.c/cust_mag.c.
+	 * Device-truth record: no 4.4 sensor driver binds these yet (F7);
+	 * compatibles follow the MTK get_*_dts_func() name lookups. */
+	cust_accel {
+		compatible = "mediatek,mpu6515a";
+		i2c_num = <1>;
+		i2c_addr = <0x69 0 0 0>;
+		direction = <4>;
+		power_id = <0xffff>;
+		power_vol = <0>;
+		firlen = <16>;
+		is_batch_supported = <0>;
+	};
+	cust_gyro {
+		compatible = "mediatek,mpu6515g";
+		i2c_num = <1>;
+		i2c_addr = <0x69 0 0 0>;
+		direction = <4>;
+		power_id = <0xffff>;
+		power_vol = <0>;
+		firlen = <0>;
+		is_batch_supported = <0>;
+	};
+	cust_mag {
+		/* m681 2026-07-16: AKM09911@0x0C = the OTHER dual-source variant (kept
+		 * for dual-source support; on THIS unit it NAKs -121 and unbinds). */
+		compatible = "mediatek,akm09911";
+		i2c_num = <1>;
+		i2c_addr = <0x0C 0 0 0>;
+		direction = <3>;
+		power_id = <0xffff>;
+		power_vol = <0>;
+	};
+	cust_mag@1 {
+		/* m681 2026-07-17: THIS unit's real mag = SENODIA ST480@0x0D (proven by
+		 * stock-3.10 dmesg of our serial + flash16 akm NAK). direction=0 =
+		 * identity: the driver already applies the stock board-0 axis map. */
+		compatible = "mediatek,st480";
+		i2c_num = <1>;
+		i2c_addr = <0x0D 0 0 0>;
+		direction = <0>;
+		power_id = <0xffff>;
+		power_vol = <0>;
+		is_batch_supported = <0>;
+	};
+	cust_alsps@0 {
+		/* m681 2026-07-16: real alsps = LTR579@0x53 (stock m3note). Was CM36686@0x60. */
+		compatible 				= "mediatek,ltr579";
+		i2c_num 				= <1>;
+		i2c_addr 				= <0x53 0 0 0>;
+		polling_mode_ps			= <0>;
+		polling_mode_als		= <1>;
+		power_id   				= <0xffff>;
+		power_vol  				= <0>;
+		/* Total has 15 level*/
+		als_level  				= <0 257 637 1027 2297 5588 6730 11301 20449 25768 31122 45552 57937 57937 57937>;
+		/*  Total has 16 range*/
+		als_value  				= <0 132 304 502 1004 2003 3006 5006 8004 10000 12000 16000 20000 20000 20000 20000>;
+		ps_threshold_high		=  <70>;
+		ps_threshold_low		=  <40>;
+		is_batch_supported_ps	= <1>;
+		is_batch_supported_als	= <1>;
+	};
+	cust_alsps@1 {
+		/* m681 2026-07-17: THIS unit's real alsps = TXC PA12200001@0x1E (proven
+		 * by stock-3.10 dmesg of our serial + flash16 ltr579 NAK; ltr579@0x53 =
+		 * the OTHER dual-source variant, node above kept for it). Values below
+		 * verbatim from stock 3.10 pa12200001.c cust_alsps_hw. polling_mode_ps=0
+		 * (interrupt via the shared "mediatek, als-eint"/EINT6 node); the driver
+		 * self-falls-back to PS polling if eint setup fails. */
+		compatible 				= "mediatek,pa12200001";
+		i2c_num 				= <1>;
+		i2c_addr 				= <0x1E 0 0 0>;
+		polling_mode_ps			= <0>;
+		polling_mode_als		= <1>;
+		power_id   				= <0xffff>;
+		power_vol  				= <0>;
+		/* Total has 15 level*/
+		als_level  				= <0 471 1058 1703 3883 10171 10443 15445 28499 35153 41421 59194 65535 65535 65535>;
+		/*  Total has 16 range*/
+		als_value  				= <0 133 303 501 1002 2001 3355 5001 8008 10010 12000 16010 20010 20010 20010 20010>;
+		ps_threshold_high		=  <55>;
+		ps_threshold_low		=  <40>;
+		is_batch_supported_ps	= <1>;
+		is_batch_supported_als	= <1>;
+	};
+/* end sensor */
+};
+
+/* m681 sensor i2c-client fix (2026-07-16): the DrvGen cust.dtsi is the GENERIC
+ * wt6755 reference-board DCT, so its i2c1 sensor CLIENT nodes are at the wrong
+ * addresses for m681. Real parts (stock m3note + Flyme HAL): alsps=LTR579@0x53,
+ * mag=AKM09911@0x0C. The board file wins by include order over cust.dtsi
+ * (same documented precedent as the &touch override below). These are the I2C
+ * CLIENT nodes (compatible = the driver of_match: mediatek,alsps / mediatek,msensor);
+ * the cust_alsps/cust_mag hw-config nodes above use the chip-name compatibles that
+ * get_alsps/mag_dts_func() looks up - two different node sets, by MTK design.
+ * accel+gyro (ICM20608@0x69) is Stage 2 (needs the staging inv_mpu driver ported),
+ * so gyro@68 is left as-is for now. */
+&i2c1 {
+	alsps@60   { status = "disabled"; };
+	msensor@2e { status = "disabled"; };
+
+	/* m681 (2026-07-16): camera_sub_af@0c is a DrvGen phantom - it is emitted into
+	 * cust.dtsi as status="okay" and, being EARLIER in DT order, claims 0x0c before
+	 * our msensor@0c -> i2c_check_addr_busy() (i2c-core.c:945) rejects the second
+	 * claimant -> "Failed to register i2c client msensor at 0x0c (-16)".
+	 * Nothing ever binds it: CONFIG_MTK_LENS is unset (m681_defconfig:253), and the
+	 * real (main-cam) AF lives on i2c2. Meizu's own stock DTS deletes the generic AF
+	 * placeholder clients for exactly this -EBUSY mechanism.
+	 * Rollback: drop this one line; the -16 returns. */
+	camera_sub_af@0c { status = "disabled"; };
+
+	alsps@53 {
+		compatible = "mediatek,alsps";
+		reg = <0x53>;
+		status = "okay";
+	};
+	msensor@0c {
+		compatible = "mediatek,msensor";
+		reg = <0x0c>;
+		status = "okay";
+	};
+};
+
+/* m681 (2026-07-17): ICM20608 INT pin. The DrvGen cust.dtsi carries the
+ * generic-DCT <4 IRQ_TYPE_LEVEL_HIGH>, but m681 truth is GPIO17/EINT17
+ * rising with 0 debounce (hardcoded in stock 3.10 inv_mpu_ring.c:48-49);
+ * EINT17 has no other claimant in the packed dtb. The ported inv_mpu
+ * driver maps this node via "mediatek, gyro-eint" + irq_of_parse_and_map.
+ * Rollback: drop this block; the generic EINT4 returns (gyro IRQ dead). */
+&gyro {
+	interrupts = <17 IRQ_TYPE_EDGE_RISING>;
+	debounce = <17 0>;
+};
+
+/* m681 (2026-07-17, sensor-irq lane): ALS INT pad = GPIO6/EINT6 (DCT dws EINT
+ * table pos6 = ALS; eic gpio<->eint map is identity, mt6755.dtsi
+ * mapping_table_entry = <0>). pa122_setup_eint looks up pinctrl state
+ * "pin_cfg" on the mediatek,als_ps platform device (pa12200001.c:2100) and
+ * currently logs "Cannot find alsps pinctrl pin_cfg!" — the pad stays in
+ * preloader state and the PS eint never fires. Pad config below = stock 3.10
+ * pa122_setup_eint verbatim (input + pull-up, pa12200001.c:2104-2106); mode0
+ * GPIO as EINT source is the same device-proven pattern as
+ * ctp_pins_eint_as_int/GPIO1 below.
+ * Rollback: drop this block + als_int_cfg in &pio; the pinctrl error log and
+ * the dead ALS-eint counter return. */
+&alsps {
+	pinctrl-names = "pin_cfg";
+	pinctrl-0 = <&als_int_cfg>;
+};
+
+/* m681 F4 (3.18 v257 4f064166, device-verified GT915L): GT9xx touch config.
+ * Generated cust.dtsi already provides &touch{eintc <1 EDGE_FALLING>, vldo28,
+ * okay} and i2c0/cap_touch@5d — this block layers the Goodix panel config,
+ * pinctrl states (INT=GPIO1, RST=GPIO10) and the i2c0 SDA0/SCL0 pad-mode fix
+ * (v239h12: pads left in GPIO mode -> controller clocked into a void, 0 ACKs).
+ * Runtime chip address is 0x14 (GT9xx 0x5d/0x14 pair). ft5436 NOT ported. */
+/* TOUCH: INT=GPIO1, RST=GPIO10, vtouch=VLDO28, i2c0.
+ * FT5436@0x38 confirmed via on-device i2c0 scan. */
+&touch {
+	bus_type = "i2c";
+	bus_id = <0>;
+	vtouch-supply = <&mt_pmic_vldo28_ldo_reg>;
+	interrupt-parent = <&eintc>;
+	interrupts = <1 2>;
+	debounce = <1 0>;
+	charger_supported = <1>;
+	product = "Jim";
+	slave_address = <93 72 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
+	algo_id = <1>;
+	hmx_irq_config = <3>;
+	goodix_irq_config = <2>;
+	need_wd_check_status = <1>;
+	x_max = <720>;
+	y_max = <1280>;
+	x_max_mt = <720>;
+	y_max_mt = <1280>;
+	goodix,product_id = "GT917D";
+	goodix,test-types = <0x80007>;
+	goodix,panel-max = <3948>;
+	goodix,panel-min = <1897>;
+	goodix,panel-deviation = <400>;
+	goodix,key-max = <0>;
+	goodix,key-min = <0>;
+	goodix,key-nc = <0>;
+	goodix,special_raw_data_limit = <>;
+	goodix,shortcircut-threshold = <0>;
+	fw_upgrade_delay = <30000>;
+	tpd-resolution = <1080 1920>;
+	use-tpd-button = <0>;
+	tpd-key-num = <3>;
+	tpd-key-local= <139 172 158 0>;
+	tpd-key-dim-local = <90 883 100 40 230 883 100 40 370 883 100 40 0 0 0 0>;
+	tpd-max-touch-num = <5>;
+	tpd-filter-enable = <1>;
+	tpd-filter-pixel-density = <146>;
+	tpd-filter-custom-prameters = <0 0 0 0 0 0 0 0 0 0 0 0>;
+	tpd-filter-custom-speed = <0 0 0>;
+	pinctrl-names = "default", "state_eint_as_int", "state_eint_output0", "state_eint_output1",
+		"state_rst_output0", "state_rst_output1";
+	pinctrl-0 = <&ctp_pins_default>;
+	pinctrl-1 = <&ctp_pins_eint_as_int>;
+	pinctrl-2 = <&ctp_pins_eint_output0>;
+	pinctrl-3 = <&ctp_pins_eint_output1>;
+	pinctrl-4 = <&ctp_pins_rst_output0>;
+	pinctrl-5 = <&ctp_pins_rst_output1>;
+	status = "okay";
+};
+&pio {
+	ctp_pins_default: eint0default {
+	};
+	ctp_pins_eint_as_int: ctp_as_eint@0 {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO1__FUNC_GPIO1>;
+			slew-rate = <0>;
+			bias-disable;
+		};
+	};
+	ctp_pins_eint_output0: eintoutput0 {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO1__FUNC_GPIO1>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	ctp_pins_eint_output1: eintoutput1 {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO1__FUNC_GPIO1>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	ctp_pins_rst_output0: rstoutput0 {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO10__FUNC_GPIO10>;
+			slew-rate = <1>;
+			bias-pull-up;
+			output-low;
+		};
+	};
+	ctp_pins_rst_output1: rstoutput1 {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO10__FUNC_GPIO10>;
+			slew-rate = <1>;
+			bias-pull-up;
+			output-high;
+		};
+	};
+	/* v239h12-stock: i2c0 SDA0/SCL0 pinmux — stock wt6755_66_sz_l cust_gpio.dtsi
+	 * configures GPIO92=SDA0, GPIO93=SCL0 (mode 1). The graft DTS left these
+	 * in GPIO mode (0) so the i2c0 controller clocked into a void (0 ACKs).
+	 * Add explicit sub nodes here so the DTC pinctrl layer records the pad
+	 * function; the focaltech driver ALSO calls mt_set_gpio_mode(92/93,1)
+	 * directly as a belt+suspenders (the graft pinctrl layer was proven to
+	 * drop &pio sub-nodes in prior sessions). */
+	gpio@92 {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO92__FUNC_SDA0>;
+			slew-rate = <1>;
+			bias-pull-up;
+		};
+	};
+	gpio@93 {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO93__FUNC_SCL0>;
+			slew-rate = <1>;
+			bias-pull-up;
+		};
+	};
+	/* ALS INT pad (see &alsps above): GPIO6 mode0, input (slew-rate 0),
+	 * pull-up — PA122 INT is open-drain active-low (EINT6 level-low). */
+	als_int_cfg: als_int_cfg {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO6__FUNC_GPIO6>;
+			slew-rate = <0>;
+			bias-pull-up;
+		};
+	};
+};
+
+
+/* m681 (3.18 v239h12-stock, device-verified VOL keys v241): keypad override —
+ * align with stock wt6755_66_sz_l DCT (cust_kpd.dtsi). The generated graft
+ * cust.dtsi has kpd-hw-init-map = <114 0 ...> (only VOLDOWN at matrix pos0;
+ * VOLUP via rstkey=115) AND kpd-sw-rstkey=115 (=VOLUP). Stock uses matrix
+ * pos0=VOLDOWN, pos1=VOLUP and rstkey=HOME(102), so both VOLUP and HOME map
+ * correctly. kpd reads mediatek,kpd-* from this node; board file wins by
+ * include order over cust.dtsi. */
+&keypad {
+	mediatek,kpd-key-debounce = <1024>;
+	mediatek,kpd-sw-pwrkey = <116>;
+	mediatek,kpd-hw-pwrkey = <8>;
+	mediatek,kpd-sw-rstkey = <102>;
+	mediatek,kpd-hw-rstkey = <17>;
+	mediatek,kpd-use-extend-type = <0>;
+	mediatek,kpd-hw-map-num = <72>;
+	mediatek,kpd-hw-init-map = <114 115 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
+	mediatek,kpd-pwrkey-eint-gpio = <0>;
+	mediatek,kpd-pwrkey-gpio-din = <0>;
+	mediatek,kpd-hw-dl-key0 = <1>;
+	mediatek,kpd-hw-dl-key1 = <0>;
+	mediatek,kpd-hw-dl-key2 = <8>;
+	mediatek,kpd-hw-recovery-key = <1>;
+	mediatek,kpd-hw-factory-key = <0>;
+};
+
+/* m681 key-fp lane (2026-07-17): GF516M fingerprint (mBack/mTouch sensor).
+ * Board truth = stock-3.10 dmesg of THIS serial (docs/run_reports/2026-06-04_
+ * m681_l681_placeholder_i2c_d6a2b7b9/.../dmesg-20260604T223906Z.txt: gf516m
+ * probe OK, irq 296 - EINT_IRQ_BASE 288 = EINT8, chip id "GFx16M_") + stock
+ * gf516m/gfx1xm sources: INT=GPIO8/EINT8 rising, RST=GPIO19, SPI0 bus0
+ * CLK=GPIO98 MI=GPIO95 MO=GPIO97 CS=GPIO96 (all mode1).
+ * Driver = in-tree goodix gf_spi_tee.c: platform node "mediatek,goodix-fp"
+ * supplies pinctrl+EINT (state names are the driver's contract), spi child
+ * "goodix,goodix-fp" binds the SPI device. The spi controller's own DT pad
+ * hog is compiled out (spi.c "#if 0"), so SPI0 pads are muxed in fp_miso_spi;
+ * gf_spi_tee.c also carries an mt_set_gpio_* fallback for the known
+ * "&pio sub-nodes dropped by the graft pinctrl layer" failure (see gpio@92
+ * note above). Target node = goodix_fp (mt6755.dtsi:3200): it is the FIRST
+ * "mediatek,goodix-fp" in DT order and of_find_compatible_node ignores
+ * status, so properties anywhere else are invisible to the driver; the
+ * sibling fingerprint:fp node (mt6755.dtsi:3207, "mediatek,fingerprint") is
+ * left untouched. Deny gate already passes these (#151).
+ * Rollback: revert this block + CONFIG_GOODIX_FINGERPRINT=n; /dev/goodix_fp
+ * and the EINT8 line disappear, nothing else changes. */
+&goodix_fp {
+	interrupt-parent = <&eintc>;
+	interrupts = <8 1>;	/* EINT8, edge rising = stock EINTF_TRIGGER_RISING */
+	debounce = <8 0>;
+	pinctrl-names = "default", "miso_spi", "miso_pullhigh", "miso_pulllow",
+		"reset_high", "reset_low";
+	pinctrl-0 = <&fp_pins_default>;
+	pinctrl-1 = <&fp_pins_miso_spi>;
+	pinctrl-2 = <&fp_pins_miso_pullhigh>;
+	pinctrl-3 = <&fp_pins_miso_pulllow>;
+	pinctrl-4 = <&fp_pins_reset_high>;
+	pinctrl-5 = <&fp_pins_reset_low>;
+	status = "okay";
+};
+
+&spi0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+	fingerprint@0 {
+		compatible = "goodix,goodix-fp";
+		reg = <0>;
+		spi-max-frequency = <1000000>;
+		netlink-event = <29>;
+		status = "okay";
+	};
+};
+
+&pio {
+	fp_pins_default: fp_default {
+	};
+	/* miso_spi carries the whole SPI0 pad group: selected once after the
+	 * oswego reset dance, stays for the session. */
+	fp_pins_miso_spi: fp_miso_spi {
+		pins_spi_mi {
+			pins = <PINMUX_GPIO95__FUNC_SPI0_MI>;
+			slew-rate = <0>;
+			bias-pull-up;
+		};
+		pins_spi_cs {
+			pins = <PINMUX_GPIO96__FUNC_SPI0_CSB>;
+			slew-rate = <1>;
+			bias-pull-up;
+		};
+		pins_spi_mo {
+			pins = <PINMUX_GPIO97__FUNC_SPI0_MO>;
+			slew-rate = <1>;
+			bias-pull-up;
+		};
+		pins_spi_clk {
+			pins = <PINMUX_GPIO98__FUNC_SPI0_CLK>;
+			slew-rate = <1>;
+			bias-pull-up;
+		};
+	};
+	/* MISO as GPIO input + pull-up during reset = oswego SPI-interface
+	 * select, stock gf516m_pull_miso_high verbatim (mode0/dir-in/pull-up). */
+	fp_pins_miso_pullhigh: fp_miso_pullhigh {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO95__FUNC_GPIO95>;
+			slew-rate = <0>;
+			bias-pull-up;
+		};
+	};
+	fp_pins_miso_pulllow: fp_miso_pulllow {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO95__FUNC_GPIO95>;
+			slew-rate = <0>;
+			bias-pull-down;
+		};
+	};
+	fp_pins_reset_high: fp_rst_high {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO19__FUNC_GPIO19>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	fp_pins_reset_low: fp_rst_low {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO19__FUNC_GPIO19>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+};
+
+/* ============================================================
+ * m681 AUDIO board truth (audio lane 2026-07-17). All blocks are inert
+ * while CONFIG_SND_SOC is off (no driver binds audgpio / accdet stays
+ * as today), EXCEPT the &accdet props which the already-enabled accdet
+ * driver (CONFIG_MTK_ACCDET=y) starts reading on the next boot — values
+ * are the stock m681 ones (oracle wt6755_66_sz_l.dts:111-116).
+ * ============================================================ */
+
+/* accdet (headset detect, PMIC MT6351-true block — zero display risk):
+ * props on the node the driver actually matches ("mediatek,mt6755-accdet",
+ * mt6755.dtsi). mic-vol/mode-setting/plugout-debounce = stock m681 oracle;
+ * mic-mode + three-key thresholds are MTK reference defaults the 4.4
+ * accdet_get_dts_data() also reads (HYPOTHESIS — tune on device). */
+&accdet {
+	accdet-mic-vol = <7>;
+	headset-mode-setting = <0x500 0x500 1 0x3f0 0x800 0x800 0x200>;
+	accdet-plugout-debounce = <20>;
+	accdet-mic-mode = <1>;
+	headset-three-key-threshold = <0 80 220 400>;
+};
+
+/* Audio pinctrl, on the audgpio (mt_soc_pcm_dl1) node — that is the device
+ * AudDrv_GPIO_probe() gets (mtk-soc-pcm-dl1.c:652), NOT the machine node.
+ *
+ * "default" (auto-applied at dl1 probe) muxes the PMIC MTKIF audio pins to
+ * their AUD functions — stock did this via the legacy DCT boot init
+ * (cust_gpio_boot.h:1261-1277: GPIO149/150/151 MODE_01); our 4.4 tree has
+ * no DCT init, so without this state the AP<->MT6351 audio data path is
+ * dead even with a healthy card.
+ *
+ * Speaker amp (AW8736-class, 3-pulse SHDN) = GPIO115 — DEVICE-PROVEN
+ * 2026-07-17: stock-3.10 dmesg of THIS unit (docs/run_reports/2026-06-04_
+ * m681_l681_placeholder_i2c_d6a2b7b9/.../dmesg-20260604T223906Z.txt:2608)
+ * shows "PCB_ID: voltage: 0.16" -> NON-rework board -> "Get AW8736 SHDN IO
+ * 115 from DTS". This is the SAME physical pin as the SM5414 charger CHGEN
+ * (stock DCT cust_gpio_usage.h:397): high = amp on = charging paused,
+ * low = amp off = charging enabled — the wire itself enforces speaker XOR
+ * charging (stock shipped exactly this sharing; its battery loop re-drove
+ * the pin low every ~10s while charging, switch_charging.c:1286).
+ * COEXISTENCE RULE: the charger driver must gate charging via the SM5414
+ * I2C CTRL.CHGEN bit (sm5414.c:249) and never write this GPIO; audio owns
+ * the pin. Until that lands in the charger lane, the amp pulses stay
+ * suppressed: forge_audio_amp_gate defaults to 0 (mtk-auddrv-gpio.c) —
+ * enable only in a watched test with the charger lane aware.
+ *
+ * ⛔ 2026-07-30 (kspk2 lane) — EVERYTHING IN THE PARAGRAPH ABOVE ABOUT
+ * GPIO115 BEING THE SPEAKER AMP IS WITHDRAWN. GPIO115 is the SM5414 charger
+ * enable and nothing else; the AW8736 SHDN is GPIO118 (shipping Flyme DTB,
+ * mt_soc_dl1_pcm extamp-pullhigh/low = GPIO118 func0). The "DEVICE-PROVEN"
+ * dmesg line was the kernel printing back the extspkamp-gpio value that the
+ * forge 3.10 build tree itself supplied — circular. There is no shared pad
+ * and no coexistence problem: audio must not touch 115 at all, and the
+ * charger keeps sole ownership of it. Evidence, cross-checks and the ranked
+ * refutation live in the forge_amp_extamp_pin block in
+ * sound/soc/mediatek/common/mtk-auddrv-gpio.c. The amp gate now defaults
+ * to 1 there, because its only stated reason to be 0 was this hazard. */
+&audgpio {
+	pinctrl-names = "default", "extamp-pullhigh", "extamp-pulllow";
+	pinctrl-0 = <&aud_pins_default>;
+	pinctrl-1 = <&aud_pins_extamp_high>;
+	pinctrl-2 = <&aud_pins_extamp_low>;
+};
+
+&pio {
+	aud_pins_default: audiodefault {
+		pins_cmd0_dat {
+			pins = <PINMUX_GPIO149__FUNC_AUD_CLK_MOSI>;
+		};
+		pins_cmd1_dat {
+			pins = <PINMUX_GPIO150__FUNC_AUD_DAT_MOSI>;
+		};
+		pins_cmd2_dat {
+			pins = <PINMUX_GPIO151__FUNC_AUD_DAT_MISO>;
+			input-enable;
+			bias-pull-down;
+		};
+	};
+	/* 2026-07-30 (kspk2): GPIO115 -> GPIO118. 115 is the SM5414 charger
+	 * enable (stock DCT GPIO_SM5414_CHGEN_PIN), never the amp; the shipping
+	 * Flyme DTB binds extamp-pullhigh/low to GPIO118 func0. Full evidence
+	 * and the refutation of the old "shared pad" verdict is in the
+	 * forge_amp_extamp_pin block in sound/soc/mediatek/common/
+	 * mtk-auddrv-gpio.c. Keep these two states in sync with that knob's
+	 * default — the m681 code path drives the pad with the raw legacy API
+	 * and does not select these states, so they are documentation plus the
+	 * binding a future pinctrl path would use. */
+	aud_pins_extamp_high: audextamphigh {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO118__FUNC_GPIO118>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	aud_pins_extamp_low: audextamplow {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO118__FUNC_GPIO118>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+};
+
+/* m681 camera lane (2026-07-20): RST/PDN pinctrl states for kd_camera_hw1.
+ * Pins = stock DCT truth (stocktruth wt6755_66_sz_l dct cust_gpio_usage.h):
+ * main RST=GPIO110, main PDN=GPIO107, sub RST=GPIO111, sub PDN=GPIO108.
+ * Stock 3.10 built CONFIG_MTK_LEGACY=y and drove these via mt_set_gpio, so
+ * the stock DTB carries no camera pinctrl - on 4.4 (non-legacy) the ported
+ * kd_camera_hw.c mtkcam_gpio_init() looks these states up by name instead.
+ * The cam_ldo_* states are NOT provided: m681 PowerCustList is all
+ * GPIO_UNSUPPORTED (rails are MT6351 PMIC LDOs, not GPIO LDOs); those
+ * lookups fail gracefully (pr_debug). No other DTB claimant exists for
+ * GPIO107/108/110/111 (verified against the shipped chgwifi DTB decompile).
+ * Rollback: drop this block + the &kd_camera_hw1 override below. */
+&pio {
+	camera_pins_cam0_rst0: cam0rst0 {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO110__FUNC_GPIO110>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	camera_pins_cam0_rst1: cam0rst1 {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO110__FUNC_GPIO110>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	camera_pins_cam0_pnd0: cam0pnd0 {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO107__FUNC_GPIO107>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	camera_pins_cam0_pnd1: cam0pnd1 {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO107__FUNC_GPIO107>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	camera_pins_cam1_rst0: cam1rst0 {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO111__FUNC_GPIO111>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	camera_pins_cam1_rst1: cam1rst1 {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO111__FUNC_GPIO111>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	camera_pins_cam1_pnd0: cam1pnd0 {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO108__FUNC_GPIO108>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	camera_pins_cam1_pnd1: cam1pnd1 {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO108__FUNC_GPIO108>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	/* AF-motor enable = GPIO21 (DCT GPIO_CAMERA_AF_EN_PIN); the SHIPPED
+	 * Flyme DTB carries exactly these two states on kd_camera_hw1. */
+	camera_pins_cam0_af_en0: cam0afen0 {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO21__FUNC_GPIO21>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	camera_pins_cam0_af_en1: cam0afen1 {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO21__FUNC_GPIO21>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	/* m681 camera lane (2026-07-20): CMMCLK pad mux. Stock DCT truth
+	 * (stocktruth cust_gpio.dtsi:1789/:1217): GPIO161 = CMMCLK0 (main
+	 * MCLK1), GPIO109 = CMMCLK1 (sub MCLK2). Stock 3.10 set these in
+	 * legacy boot-time pad init; here kd_camera_hw.c selects them
+	 * explicitly around ISP_MCLK*_EN. _off parks the pad GPIO-low. */
+	camera_pins_cam0_mclk_on: cam0mclkon {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO161__FUNC_CMMCLK0>;
+			slew-rate = <1>;
+			bias-disable;
+		};
+	};
+	camera_pins_cam0_mclk_off: cam0mclkoff {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO161__FUNC_GPIO161>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	camera_pins_cam1_mclk_on: cam1mclkon {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO109__FUNC_CMMCLK1>;
+			slew-rate = <1>;
+			bias-disable;
+		};
+	};
+	camera_pins_cam1_mclk_off: cam1mclkoff {
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO109__FUNC_GPIO109>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+};
+
+&kd_camera_hw1 {
+	pinctrl-names = "cam0_rst0", "cam0_rst1", "cam0_pnd0", "cam0_pnd1",
+		"cam1_rst0", "cam1_rst1", "cam1_pnd0", "cam1_pnd1",
+		"cam0_af_en0", "cam0_af_en1",
+		"cam0_mclk_off", "cam0_mclk_on",
+		"cam1_mclk_off", "cam1_mclk_on";
+	pinctrl-0 = <&camera_pins_cam0_rst0>;
+	pinctrl-1 = <&camera_pins_cam0_rst1>;
+	pinctrl-2 = <&camera_pins_cam0_pnd0>;
+	pinctrl-3 = <&camera_pins_cam0_pnd1>;
+	pinctrl-4 = <&camera_pins_cam1_rst0>;
+	pinctrl-5 = <&camera_pins_cam1_rst1>;
+	pinctrl-6 = <&camera_pins_cam1_pnd0>;
+	pinctrl-7 = <&camera_pins_cam1_pnd1>;
+	pinctrl-8 = <&camera_pins_cam0_af_en0>;
+	pinctrl-9 = <&camera_pins_cam0_af_en1>;
+	pinctrl-10 = <&camera_pins_cam0_mclk_off>;
+	pinctrl-11 = <&camera_pins_cam0_mclk_on>;
+	pinctrl-12 = <&camera_pins_cam1_mclk_off>;
+	pinctrl-13 = <&camera_pins_cam1_mclk_on>;
+	/* m681 (2026-07-20): the sub sensor's DVDD goes through the
+	 * "vcamd_sub" lookup in kd_sensorlist.c Get_Cam_Regulator; MT6351
+	 * has a single VCAMD LDO serving both sockets (device truth), so
+	 * map it to the same regulator instead of letting regulator_get
+	 * hand back a dummy that "enables" nothing. */
+	vcamd_sub-supply = <&mt_pmic_vcamd_ldo_reg>;
+	/* m681 §11.165: add clk26m so forge_cam_mclk_parent can ACTIVELY select a
+	 * 26 MHz camtg root. The base node (mt6755.dtsi kd_camera_hw1:2050-2054)
+	 * offers only the four topckgen entries, and LK already parks camtg on
+	 * univpll_d26 (48 MHz), so without this there is no reachable parent at
+	 * the frequency both fitted sensors declare (.mclk = 24).
+	 * A DT property override REPLACES the whole list, so all four base
+	 * entries are repeated here verbatim, plus clk26m (mt6755.dtsi:357-361,
+	 * fixed-clock 26000000).
+	 * Rollback: drop these two properties; the base list returns and
+	 * forge_cam_mclk_parent=0 then refuses loudly instead of no-opping. */
+	clocks = <&topckgen TOP_MUX_CAMTG>,
+		<&topckgen TOP_MUX_SCAM>,
+		<&topckgen TOP_UNIVPLL_D26>,
+		<&topckgen TOP_UNIVPLL2_D2>,
+		<&clk26m>;
+	clock-names = "TOP_CAMTG_SEL", "TOP_MUX_SCAM", "TOP_UNIVPLL_D26",
+		"TOP_UNIVPLL2_D2", "TOP_CLK26M";
+	status = "okay";
+};

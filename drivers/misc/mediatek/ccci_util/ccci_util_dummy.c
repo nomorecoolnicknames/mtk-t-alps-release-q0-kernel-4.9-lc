@@ -20,6 +20,7 @@
 #include <linux/poll.h>
 #include <linux/skbuff.h>
 
+#ifndef CONFIG_MACH_MT6755
 bool __weak spm_is_md1_sleep(void)
 {
 	pr_notice("[ccci/dummy] %s is not supported!\n", __func__);
@@ -30,6 +31,8 @@ void __weak spm_ap_mdsrc_req(u8 lock)
 {
 	pr_notice("[ccci/dummy] %s is not supported!\n", __func__);
 }
+
+#endif
 
 void __weak ccci_power_off(void)
 {
@@ -84,6 +87,7 @@ char * __weak ccci_get_ap_platform(void)
 	return "MTxxxxE1";
 }
 
+#if !defined(CONFIG_MACH_MT6755) || !defined(CONFIG_MTK_M681_CLKBUF)
 bool __weak is_clk_buf_from_pmic(void)
 {
 	pr_debug("[ccci/dummy] %s is not supported!\n", __func__);
@@ -104,6 +108,8 @@ void __weak clk_buf_save_afc_val(unsigned int afcdac)
 {
 	pr_debug("[ccci/dummy] %s is not supported!\n", __func__);
 }
+#endif
+
 int __weak rawbulk_push_upstream_buffer(int transfer_id, const void *buffer,
 		unsigned int length)
 {

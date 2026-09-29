@@ -14,6 +14,10 @@ ccflags-y += -Idrivers/misc/mediatek/include/
 endif
 
 obj-y                          := main.o version.o mounts.o
+# m681: WDT-surviving early-boot stage markers (SPM/DRAM breadcrumbs +
+# forge_enable_cpuxgpt timer fix). Carried from the m681 4.4 tree — the
+# primary boot observability channel (witness at 0x448001F0).
+obj-y                          += forge_m681_marker.o
 obj-y                          += noinitramfs.o
 obj-$(CONFIG_BLK_DEV_INITRD)   += initramfs.o
 obj-$(CONFIG_GENERIC_CALIBRATE_DELAY) += calibrate.o

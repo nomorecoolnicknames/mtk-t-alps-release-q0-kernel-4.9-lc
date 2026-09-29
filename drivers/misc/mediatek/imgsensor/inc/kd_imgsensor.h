@@ -149,6 +149,7 @@
 #define OV16880_SENSOR_ID                       0x016880
 #define OV16825MIPI_SENSOR_ID                   0x016820
 #define OV13855_SENSOR_ID                       0xD855
+#define OV13853_SENSOR_ID                      0xD853
 #define OV13850_SENSOR_ID                       0xD850
 #define OV12A10_SENSOR_ID                       0x1241
 #define OV12830_SENSOR_ID                       0xC830
@@ -348,6 +349,7 @@
 #define SENSOR_DRVNAME_OV16880_MIPI_RAW         "ov16880_mipi_raw"
 #define SENSOR_DRVNAME_OV16825_MIPI_RAW         "ov16825_mipi_raw"
 #define SENSOR_DRVNAME_OV13855_MIPI_RAW         "ov13855_mipi_raw"
+#define SENSOR_DRVNAME_OV13853_MIPI_RAW         "ov13853mipiraw"
 #define SENSOR_DRVNAME_OV13850_MIPI_RAW         "ov13850_mipi_raw"
 #define SENSOR_DRVNAME_OV12A10_MIPI_RAW         "ov12a10_mipi_raw"
 #define SENSOR_DRVNAME_OV12830_MIPI_RAW         "ov12830_mipi_raw"

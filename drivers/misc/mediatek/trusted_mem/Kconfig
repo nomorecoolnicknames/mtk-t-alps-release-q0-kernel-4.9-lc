@@ -25,12 +25,23 @@ config MTK_PROT_MEM_SUPPORT
 	  Say Y if you would like to enable this feature.
 	  If unsure, say N.
 
+# Kernel GlobalPlatform client API required by the trusted-memory peer.
+config MTK_TMEM_GP_API
+	bool
+	default y if MTK_TEE_GP_SUPPORT && !TRUSTONIC_TEE_SUPPORT
+	default y if TRUSTONIC_TEE_SUPPORT && (TRUSTONIC_TEE_VERSION = "311c" || TRUSTONIC_TEE_VERSION = "400b" || TRUSTONIC_TEE_VERSION = "410")
+	help
+	  The secure-memory GP peer requires tee_client_api.h and exported
+	  TEEC client calls. Trustonic 302c supplies the legacy MobiCore API
+	  only; it cannot provide this backend. Other GP providers retain
+	  the explicit MTK_TEE_GP_SUPPORT selection.
+
 #
 # SVP Secure Memory configuration
 #
 config MTK_SECURE_MEM_SUPPORT
 	tristate "MTK SVP SECURE Memory Support"
-	depends on TRUSTONIC_TEE_SUPPORT || CONFIG_MTK_TEE_GP_SUPPORT
+	depends on MTK_TMEM_GP_API
 	default y
 	help
 	  Enable the support of MediaTek SVP secure memory driver.

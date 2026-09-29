@@ -238,6 +238,17 @@ config MTK_SENSORS_1_0
 	  And we support loadble drivers
 
 source "drivers/misc/mediatek/sensors-1.0/Kconfig"
+source "drivers/misc/mediatek/m681-sensors/Kconfig"
+source "drivers/misc/mediatek/hall/Kconfig"
+source "drivers/misc/mediatek/vibrator/mt6755/Kconfig"
+
+config MEIZU_SYSFS_CLASS
+	bool "Meizu shared sensor sysfs class"
+	depends on MACH_MT6755
+	default n
+	help
+	  Provide the shared meizu class for board-specific sensor interfaces.
+	  Consumers must reject a failed class creation.
 
 endmenu  # Sensors
 
@@ -251,6 +262,7 @@ source "drivers/misc/mediatek/dual_ccci/Kconfig"
 source "drivers/misc/mediatek/eccci/Kconfig"
 source "drivers/misc/mediatek/conn_md/Kconfig"
 source "drivers/misc/mediatek/btif/Kconfig"
+source "drivers/misc/mediatek/fmradio/Kconfig"
 source "drivers/misc/mediatek/ssw/Kconfig"
 
 endmenu  # CONN
@@ -322,6 +334,8 @@ source "drivers/misc/mediatek/flashlight/richtek/Kconfig"
 source "drivers/misc/mediatek/rt-regmap/Kconfig"
 source "drivers/misc/mediatek/smartpa/Kconfig"
 source "drivers/misc/mediatek/usb20/Kconfig"
+source "drivers/misc/mediatek/mu3d/Kconfig"
+source "drivers/misc/mediatek/mu3phy/Kconfig"
 source "drivers/misc/mediatek/cirq/Kconfig"
 source "drivers/misc/mediatek/atf/Kconfig"
 source "drivers/misc/mediatek/vpu/Kconfig"

@@ -44,6 +44,60 @@
 
 #define __PHYS_OFFSET	(KERNEL_START - TEXT_OFFSET)
 
+/*
+ * FORGE early boot markers (m5c 4.9 bring-up, no UART), revision 2.
+ *
+ * Rev 1 stamped the minirdump window (0x43ff0800); a control experiment
+ * (write from a running kernel, reboot, read back via /dev/mem) proved it
+ * does NOT survive a reboot. Rev 2 tried 0x44800000 / 0x4e100000; both
+ * were disproven the same way - they are clobbered by the READER (the
+ * recovery TWRP ramdisk is ~10.3 MiB, 0x44000000..~0x44A40000, swallowing
+ * 0x44800000; 0x4e100000 sits right after the tags/DTB area).
+ *
+ * Rev 3 uses two addresses control-validated by the write-reboot-read
+ * probe from recovery (each held its ASCII probe across the reboot):
+ *   D: 0x7f000000 (dec 2130706432)
+ *   E: 0xb0000000 (dec 2952790016)
+ * Both are far above the ramdisk/tags/DTB and far apart. (0x5f000000 also
+ * validated; kept as a documented spare, not stamped.)
+ *
+ * Layout at each base: +0 "FORG", +4 "E49\0", then one 8-byte slot per
+ * milestone at +8+8*ms = "MRA?" with the low byte = ms, so every
+ * milestone reached stays visible (not just the last one).
+ * Milestones: 1=stext entry, 2=el2_setup done, 3=page tables built,
+ * 4=cpu_setup done (about to enable the MMU).
+ * Runs with MMU+D-cache OFF, so stores reach DRAM directly; dsb orders.
+ * Only x14/x15 are used (dead at every call site; x0..x3 preserved).
+ * Both bases are exact lsl-16 immediates (0x7f00<<16, 0xb000<<16), so a
+ * single movz loads each.
+ * Read from recovery (busybox):
+ *   dd if=/dev/mem of=/tmp/fD.bin bs=1 skip=2130706432 count=48  # 0x7f000000
+ *   dd if=/dev/mem of=/tmp/fE.bin bs=1 skip=2952790016 count=48  # 0xb0000000
+ */
+	.macro	forge_stamp, ms		// x14 = base PA already loaded
+	movz	x15, #0x4f46			// "FORG" (F,O,R,G LE)
+	movk	x15, #0x4752, lsl #16
+	str	w15, [x14]
+	movz	x15, #0x3445			// "E49\0" (E,4,9,NUL LE)
+	movk	x15, #0x0039, lsl #16
+	str	w15, [x14, #4]
+	movz	x15, #0x4100 + \ms		// low16: 'A'<<8 | ms
+	movk	x15, #0x4152, lsl #16		// "RM" -> bytes ms,'A','R','M'
+	str	x15, [x14, #8 + (8 * \ms)]
+	.endm
+
+	.macro	forge_mark, ms
+	movz	x14, #0x7f00, lsl #16		// candidate D: 0x7f000000
+	forge_stamp \ms
+#ifndef CONFIG_MACH_MT6755
+	/* m681: 0xb0000000 is inside the LK ccci_md0 carve-out (the modem
+	 * image LK loaded), not kernel RAM — stamp D only there. */
+	movz	x14, #0xb000, lsl #16		// candidate E: 0xb0000000
+	forge_stamp \ms
+#endif
+	dsb	sy
+	.endm
+
 #if (TEXT_OFFSET & 0xfff) != 0
 #error TEXT_OFFSET must be at least 4KB aligned
 #elif (PAGE_OFFSET & 0x1fffff) != 0
@@ -219,12 +273,15 @@ efi_header_end:
 	 *  x19/x20    __primary_switch()         callee preserved temp registers
 	 */
 ENTRY(stext)
+	forge_mark 1				// FORGE: entered stext (MMU/dcache off)
 	bl	preserve_boot_args
 	bl	el2_setup			// Drop to EL1, w0=cpu_boot_mode
+	forge_mark 2				// FORGE: el2_setup done (w0 preserved)
 	adrp	x23, __PHYS_OFFSET
 	and	x23, x23, MIN_KIMG_ALIGN - 1	// KASLR offset, defaults to 0
 	bl	set_cpu_boot_mode_flag
 	bl	__create_page_tables
+	forge_mark 3				// FORGE: page tables built
 	/*
 	 * The following calls CPU setup code, see arch/arm64/mm/proc.S for
 	 * details.
@@ -232,6 +289,7 @@ ENTRY(stext)
 	 * the TCR will have been set.
 	 */
 	bl	__cpu_setup			// initialise processor
+	forge_mark 4				// FORGE: asm bring-up done, MMU next
 	b	__primary_switch
 ENDPROC(stext)
 

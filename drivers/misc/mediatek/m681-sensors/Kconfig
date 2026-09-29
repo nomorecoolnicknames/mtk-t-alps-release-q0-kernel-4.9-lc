@@ -1,0 +1,15 @@
+config MTK_M681_LEGACY_SENSORS
+	bool "M681 legacy input sensor ABI"
+	depends on MACH_MT6755 && MTK_SENSOR_SUPPORT && I2C && INPUT && OF && !MTK_SENSORS_1_0
+	default n
+	help
+	  ALSPS and magnetometer input interfaces used by the M681 vendor HAL.
+	  Requires board-verified I2C clients and must not coexist with the
+	  sensor_event-based sensors-1.0 stack.
+
+if MTK_M681_LEGACY_SENSORS
+source "drivers/misc/mediatek/m681-sensors/alsps/ltr579/Kconfig"
+source "drivers/misc/mediatek/m681-sensors/alsps/pa12200001/Kconfig"
+source "drivers/misc/mediatek/m681-sensors/magnetometer/akm09911-new/Kconfig"
+source "drivers/misc/mediatek/m681-sensors/magnetometer/st480/Kconfig"
+endif

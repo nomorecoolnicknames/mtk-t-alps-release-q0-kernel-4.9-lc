@@ -1563,9 +1563,21 @@ struct tty_struct *tty_init_dev(struct tty_driver *driver, int idx)
 	if (!tty->port)
 		tty->port = driver->ports[idx];
 
-	WARN_RATELIMIT(!tty->port,
-			"%s: %s driver does not set tty->port. This will crash the kernel later. Fix the driver!\n",
-			__func__, tty->driver->name);
+	/*
+	 * Upstream behaviour (later kernels): a driver without a tty_port
+	 * fails the open instead of oopsing on tty->port->itty below. m681
+	 * 4.9 G1.2 died exactly here opening /dev/console from
+	 * kernel_init_freeable(); with -EINVAL the kernel logs "unable to
+	 * open an initial console" and still runs /init. The tty was already
+	 * installed in driver->ttys[idx], so take it out before freeing.
+	 */
+	if (WARN_RATELIMIT(!tty->port,
+			"%s: %s driver does not set tty->port (idx %d). This would crash the kernel. Fix the driver!\n",
+			__func__, tty->driver->name, idx)) {
+		retval = -EINVAL;
+		tty_driver_remove_tty(driver, tty);
+		goto err_free_tty;
+	}
 
 	retval = tty_ldisc_lock(tty, 5 * HZ);
 	if (retval)
@@ -3605,6 +3617,11 @@ void tty_default_fops(struct file_operations *fops)
  * Just do some early initializations, and do the complex setup
  * later.
  */
+/* FORGE boot markers (m5c 4.9 bring-up); strong defs in arm64 setup.c.
+ * Weak stubs so other configurations still link. */
+void __weak forge_kmark(int ms) { }
+void __weak forge_kmark_ptr(int ms, unsigned long v) { }
+
 void __init console_init(void)
 {
 	initcall_t *call;
@@ -3618,9 +3635,13 @@ void __init console_init(void)
 	 */
 	call = __con_initcall_start;
 	while (call < __con_initcall_end) {
+		/* FORGE: record the initcall about to run; if it wedges, the
+		 * surviving slot-19 value names it via System.map. */
+		forge_kmark_ptr(19, (unsigned long)*call);
 		(*call)();
 		call++;
 	}
+	forge_kmark(20);	/* FORGE: all console initcalls done */
 }
 
 static char *tty_devnode(struct device *dev, umode_t *mode)

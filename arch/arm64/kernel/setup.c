@@ -64,6 +64,13 @@
 #include <asm/xen/hypervisor.h>
 #include <asm/mmu_context.h>
 
+#ifdef CONFIG_MACH_MT6755
+/* m681: WDT-surviving persistent DRAM stage markers + cpuxgpt enable.
+ * Carried from the m681 4.4 tree; parallel to the m5c forge_cmark infra
+ * (different DRAM addresses, different device). */
+#include "../../../init/forge_m681_marker.h"
+#endif
+
 phys_addr_t __fdt_pointer __initdata;
 
 /*
@@ -231,8 +238,172 @@ static void __init request_standard_resources(void)
 
 u64 __cpu_logical_map[NR_CPUS] = { [0 ... NR_CPUS-1] = INVALID_HWID };
 
+/*
+ * FORGE C-level boot markers (m5c 4.9 bring-up, no console).
+ * The asm markers in head.S run with the MMU off and physical stores; once
+ * the MMU is on they cannot reach the far scratch pages. These stamp the
+ * same two validated scratch addresses (0x7f000000, 0xb0000000) from C via
+ * early_ioremap (available from early_ioremap_init() onward), so the death
+ * point can be bisected across setup_arch. Same on-DRAM layout as head.S:
+ * "FORGE49\0" at +0, an 8-byte slot per milestone at +8+8*ms (bytes
+ * ms,'A','R','A'), so every milestone reached stays visible.
+ * Milestones (C): 5=setup_arch/ioremap live, 6=fdt scanned,
+ * 7=memblock done, 8=paging_init done, 9=setup_arch end.
+ */
+#define FORGE_A	0x7f000000UL
+#define FORGE_B	0xb0000000UL
+
+/*
+ * m681 (MT6755): page B is not RAM the kernel owns. The m681 LK carves
+ * 0xae000000-0xb4ffffff out of the memory it hands over ("[PHY layout]
+ * ccci_md0 at LK" in the device dmesg), so phys_to_virt(FORGE_B) is not in
+ * the linear map and the first read of it is a translation fault — the G1
+ * death right after stage 0x39. On m681 only page A is stamped, and the
+ * linear-map users below also check forge_page_mapped (set once the linear
+ * map exists) so a scratch page outside it can never be dereferenced.
+ */
+#ifdef CONFIG_MACH_MT6755
+#define FORGE_NR_PAGES	1
+#else
+#define FORGE_NR_PAGES	2
+#endif
+static const phys_addr_t forge_pages[2] = { FORGE_A, FORGE_B };
+static unsigned int forge_page_mapped;	/* bit i: forge_pages[i] linear-mapped */
+
+static void __init forge_check_pages(void)
+{
+	int i;
+
+	for (i = 0; i < FORGE_NR_PAGES; i++)
+		if (memblock_is_map_memory(forge_pages[i]))
+			forge_page_mapped |= 1U << i;
+}
+
+static void __init forge_cmark(int ms)
+{
+	int i;
+
+	for (i = 0; i < FORGE_NR_PAGES; i++) {
+		const phys_addr_t base = forge_pages[i];
+		void __iomem *p = early_ioremap(base, 128);
+
+		if (!p)
+			continue;
+		writel(0x47524f46, p + 0);		/* "FORG" */
+		writel(0x00393445, p + 4);		/* "E49\0" */
+		writeq(((u64)0x4152 << 16) | (0x4100 | (ms & 0xff)),
+		       p + 8 + 8 * ms);			/* slot: ms,'A','R','A' */
+		early_iounmap(p, 128);
+	}
+}
+
+/*
+ * forge_kmark: same markers but for the start_kernel phase, after
+ * early_ioremap is torn down. The linear map is up (post paging_init), so
+ * reach the scratch pages by phys_to_virt - but that mapping is CACHED, so
+ * the cacheline must be flushed to DRAM or the recovery /dev/mem read (which
+ * sees DRAM) would miss it if the CPU wedges. Milestones 10..16 are stamped
+ * from init/main.c around the init calls most likely to hang on this graft
+ * (init_IRQ = mt-gic, time_init = mt_gpt, console_init).
+ */
+void forge_kmark(int ms)
+{
+	int i;
+
+	for (i = 0; i < FORGE_NR_PAGES; i++) {
+		void *p;
+
+		if (!(forge_page_mapped & (1U << i)))
+			continue;
+		p = phys_to_virt(forge_pages[i]);
+
+		*(volatile u32 *)(p + 0) = 0x47524f46;		/* "FORG" */
+		*(volatile u32 *)(p + 4) = 0x00393445;		/* "E49\0" */
+		*(volatile u64 *)(p + 8 + 8 * ms) =
+			((u64)0x4152 << 16) | (0x4100 | (ms & 0xff));
+		__flush_dcache_area(p, 1024);	/* covers slots up to ms=126 */
+	}
+}
+
+/*
+ * forge_preserve_prev (p37): copy the previous boot's marker slots (bytes
+ * 0..1023 of each page) into bytes 1024..2047 of the SAME page, before this
+ * boot re-stamps them. In a reset loop every cycle overwrites the live
+ * slots; the copy keeps the dying boot's full history readable from TWRP
+ * (dd count=2) and mirrorable to expdb. head.S has already stamped slots
+ * 1-4 of the current boot by now — acceptable loss, everything from the
+ * ~5s window onward is still the previous boot's.
+ */
+static void __init forge_preserve_prev(void)
+{
+	int i;
+
+	for (i = 0; i < FORGE_NR_PAGES; i++) {
+		void *p;
+
+		if (!(forge_page_mapped & (1U << i)))
+			continue;
+		p = phys_to_virt(forge_pages[i]);
+
+		if (*(u32 *)p != 0x47524f46)	/* no "FORG" magic: cold boot */
+			continue;
+		memcpy(p + 1024, p, 1024);
+		__flush_dcache_area(p, 2048);
+	}
+}
+
+/*
+ * forge p46: a one-shot flag cell at page A + 2048 — outside both the
+ * milestone slots (0..1023) and the previous-boot copy (1024..2047), inside
+ * the reserved page. DRAM survives the warm reset (DDR-reserve, p43), so a
+ * subsystem can mark "I am about to do something that killed the last boot"
+ * and see it again on the next boot. A cold boot wipes it (0xFF...) and the
+ * attempt is made afresh.
+ */
+u64 forge_flag_get(void)
+{
+	if (!(forge_page_mapped & 1U))
+		return 0;
+	return *(volatile u64 *)(phys_to_virt(FORGE_A) + 2048);
+}
+EXPORT_SYMBOL(forge_flag_get);
+
+void forge_flag_set(u64 v)
+{
+	void *p;
+
+	if (!(forge_page_mapped & 1U))
+		return;
+	p = phys_to_virt(FORGE_A) + 2048;
+	*(volatile u64 *)p = v;
+	__flush_dcache_area(p, 64);
+}
+EXPORT_SYMBOL(forge_flag_set);
+
+/* Like forge_kmark but the slot carries an arbitrary value (e.g. the
+ * address of the initcall about to run); decode with the build's
+ * System.map. */
+void forge_kmark_ptr(int ms, unsigned long v)
+{
+	int i;
+
+	for (i = 0; i < FORGE_NR_PAGES; i++) {
+		void *p;
+
+		if (!(forge_page_mapped & (1U << i)))
+			continue;
+		p = phys_to_virt(forge_pages[i]);
+
+		*(volatile u64 *)(p + 8 + 8 * ms) = v;
+		__flush_dcache_area(p, 1024);
+	}
+}
+
 void __init setup_arch(char **cmdline_p)
 {
+#ifdef CONFIG_MACH_MT6755
+	forge_m681_mark(FORGE_STAGE_ARCH_SETUP_ENTRY);		/* 0x32 */
+#endif
 	pr_info("Boot CPU: AArch64 Processor [%08x]\n", read_cpuid_id());
 
 	sprintf(init_utsname()->machine, UTS_MACHINE);
@@ -245,8 +416,22 @@ void __init setup_arch(char **cmdline_p)
 
 	early_fixmap_init();
 	early_ioremap_init();
+	forge_cmark(5);				/* FORGE: setup_arch, early_ioremap live */
+#ifdef CONFIG_MACH_MT6755
+	/* m681: enables cpuxgpt (arch timer) + maps the SPM marker base.
+	 * Must run right after early_ioremap_init() so subsequent udelay()
+	 * has a running CNTVCT_EL0 and all later marks are persisted. */
+	forge_m681_marker_early_init();
+	forge_m681_mark(FORGE_STAGE_ARCH_POST_EARLY_IOREMAP);	/* 0x35 */
+#endif
 
 	setup_machine_fdt(__fdt_pointer);
+	forge_cmark(6);				/* FORGE: FDT scanned */
+#ifdef CONFIG_MACH_MT6755
+	forge_m681_virt_detect();
+	forge_m681_marker_early_console();
+	forge_m681_mark(FORGE_STAGE_ARCH_POST_MACHINE_FDT);	/* 0x34 */
+#endif
 
 	parse_early_param();
 
@@ -265,8 +450,39 @@ void __init setup_arch(char **cmdline_p)
 	xen_early_init();
 	efi_init();
 	arm64_memblock_init();
+	/* FORGE p37: the marker pages, the debug ram console window and the
+	 * debug pstore window are plain free DRAM as far as the allocator is
+	 * concerned (the stock DTB memory node ends at 0x5f000000, but LK
+	 * hands us the real 2GB, so they all sit in the linear map). Without
+	 * these reserves the buddy allocator hands them out and every
+	 * forge_kmark / ram_console write corrupts live kernel or user
+	 * memory.
+	 * m681 4.9: the m681 LK gives no ram_console memory_info either, so
+	 * the ram console (0x5f000000) and ramoops (0x5f010000, console
+	 * zone on) take this same window there too - it must be reserved on
+	 * MT6755 as well; without it every m681 4.9 boot wrote its log into
+	 * ~1 MiB of pages the allocator had handed out. 0xb0000000 stays
+	 * m5c-only: on m681 it is inside the LK modem carve-out (G1 wall). */
+	memblock_reserve(0x5f000000, 0x100000);	/* rc49 64K + pstore 0xe0000 */
+#ifndef CONFIG_MACH_MT6755
+	memblock_reserve(0xb0000000, PAGE_SIZE);	/* marker page B */
+#endif
+	memblock_reserve(0x7f000000, PAGE_SIZE);	/* marker page A */
+#ifdef CONFIG_MACH_MT6755
+	forge_m681_headlog_reserve();
+#endif
+	forge_cmark(7);				/* FORGE: memblock done */
 
 	paging_init();
+	forge_cmark(8);				/* FORGE: paging_init done (linear map up) */
+#ifdef CONFIG_MACH_MT6755
+	forge_m681_mark(FORGE_STAGE_ARCH_POST_PAGING_INIT);	/* 0x39 */
+#endif
+	forge_check_pages();
+	forge_preserve_prev();			/* FORGE p37: save prev boot's slots */
+#ifdef CONFIG_MACH_MT6755
+	forge_m681_headlog_init();
+#endif
 
 	acpi_table_upgrade();
 
@@ -288,6 +504,9 @@ void __init setup_arch(char **cmdline_p)
 		psci_dt_init();
 	else
 		psci_acpi_init();
+#ifdef CONFIG_MACH_MT6755
+	forge_m681_mark(FORGE_STAGE_ARCH_POST_PSCI_INIT);	/* 0x3B */
+#endif
 
 	cpu_read_bootcpu_ops();
 	smp_init_cpus();
@@ -315,6 +534,10 @@ void __init setup_arch(char **cmdline_p)
 			"This indicates a broken bootloader or old kernel\n",
 			boot_args[1], boot_args[2], boot_args[3]);
 	}
+	forge_cmark(9);				/* FORGE: setup_arch end */
+#ifdef CONFIG_MACH_MT6755
+	forge_m681_mark(FORGE_STAGE_ARCH_SETUP_EXIT);		/* 0x3D */
+#endif
 }
 
 static int __init topology_init(void)

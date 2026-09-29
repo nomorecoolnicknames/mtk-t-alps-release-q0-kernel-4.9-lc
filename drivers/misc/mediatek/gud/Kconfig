@@ -38,7 +38,7 @@ config TRUSTONIC_TEE_DEBUG
 #
 config MOBICORE_DRIVER
 	tristate "MobiCore Driver"
-	depends on (TRUSTONIC_TEE_SUPPORT) && (TRUSTONIC_TEE_VERSION="302d")
+	depends on (TRUSTONIC_TEE_SUPPORT) && ((TRUSTONIC_TEE_VERSION="302d") || (TRUSTONIC_TEE_VERSION="302c"))
 	default y
 	---help---
 	  Enable Linux Kernel MobiCore Support

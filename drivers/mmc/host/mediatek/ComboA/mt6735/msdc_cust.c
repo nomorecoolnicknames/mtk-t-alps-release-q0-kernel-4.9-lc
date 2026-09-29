@@ -890,9 +890,23 @@ int msdc_of_parse(struct platform_device *pdev, struct mmc_host *mmc)
 	np = mmc->parent->of_node; /* mmcx node in project dts */
 
 	if (of_property_read_u8(np, "index", &id)) {
-		pr_notice("[%s] host index not specified in device tree\n",
-			pdev->dev.of_node->name);
-		return -1;
+		/* m5c: the stock 2017 DTB carries no "index" property, so every
+		 * host failed here with "host index not specified" and eMMC never
+		 * probed (p23 log, rc49_p23.log lines 13-18). Derive the id from
+		 * the node name exactly as the hardware-proven 3.18 msdc_of_parse
+		 * does (mt6735/sd.c:8752-8759 on the same DTB).
+		 */
+		if (!strcmp(np->name, "msdc0"))
+			id = 0;
+		else if (!strcmp(np->name, "msdc1"))
+			id = 1;
+		else if (!strcmp(np->name, "msdc2"))
+			id = 2;
+		else {
+			pr_notice("[%s] host index not specified in device tree\n",
+				pdev->dev.of_node->name);
+			return -1;
+		}
 	}
 	host->id = id;
 	pdev->id = id;
@@ -966,14 +980,15 @@ int msdc_of_parse(struct platform_device *pdev, struct mmc_host *mmc)
 		pr_debug("of_iomap for MSDC%d TOP base @ 0x%p\n",
 			host->id, host->base_top);
 #endif
-	/* device rename */
-	if ((host->id == 0) && !device_rename(mmc->parent, "bootdevice"))
-		pr_notice("[msdc%d] device renamed to bootdevice.\n", host->id);
-	else if ((host->id == 1) && !device_rename(mmc->parent, "externdevice"))
-		pr_notice("[msdc%d] device renamed to externdevice.\n",
-			host->id);
-	else if ((host->id == 0) || (host->id == 1))
-		pr_notice("[msdc%d] error: device renamed failed.\n", host->id);
+	/* forge p40: NO device rename. The Q0 BSP renames msdc0 to
+	 * "bootdevice" (msdc1 -> "externdevice"), which moves the sysfs
+	 * DEVPATH and makes ueventd publish the partitions under
+	 * /dev/block/platform/bootdevice/by-name/. Our ramdisk (shared with
+	 * the working stock-3.18 boot, must not be touched) mounts fstab by
+	 * /dev/block/platform/mtk-msdc.0/11230000.msdc0/by-name/... — the
+	 * stock-DTB path this device keeps when left unrenamed. p39 evidence:
+	 * every fs_mgr mount failed ENOENT 20s apart while the eMMC itself
+	 * was fine (expdb mirror writing). */
 
 	return host->id;
 }

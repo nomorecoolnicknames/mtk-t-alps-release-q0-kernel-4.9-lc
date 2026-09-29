@@ -14,7 +14,11 @@
 #ifndef _COMMON_MTK_VCOREFS_MANAGER_H
 #define _COMMON_MTK_VCOREFS_MANAGER_H
 
-#if defined(CONFIG_MACH_MT6757) || defined(CONFIG_MACH_KIBOPLUS)
+/* m681: route MACH_MT6755 to the mt6757 vcorefs manager DECLARATIONS
+ * (is_vcorefs_can_work / vcorefs_request_dvfs_opp + the governor enums).
+ * vcorefs impl deferred; msdc autok_dvfs only needs the decls. Link stubs
+ * live in base/power/mt6755/mt_vcorefs_stub.c. Same bridge as the 4.4 tree. */
+#if defined(CONFIG_MACH_MT6757) || defined(CONFIG_MACH_KIBOPLUS) || defined(CONFIG_MACH_MT6755)
 
 #include "vcorefs_v1/mtk_vcorefs_manager_mt6757.h"
 

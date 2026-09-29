@@ -1275,6 +1275,12 @@ static void ptp_set_ptp_volt(struct ptp_det *det)
 
 	 cur_temp = det->ops->get_temp(det);
 	ptp_debug("ptp_set_ptp_volt(): cur_temp = %d, valid = %d\n", cur_temp, tscpu_bank0_temp_is_valid);
+	/* FORGE m5c p25 DIAGNOSTIC: PTP volt update entry (temp valid=0 on
+	 * this unit - see p24 log). */
+	{
+		extern void forge_kmark_ptr(int ms, unsigned long v);
+		forge_kmark_ptr(72, (unsigned long)cur_temp);
+	}
 	if (!tscpu_bank0_temp_is_valid || cur_temp <= 33000) {
 		low_temp_offset = 10;
 		ctrl->volt_update |= PTP_VOLT_UPDATE;

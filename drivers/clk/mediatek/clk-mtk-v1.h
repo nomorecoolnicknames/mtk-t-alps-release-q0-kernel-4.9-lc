@@ -23,6 +23,12 @@
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
 
+/* carried from the m681 4.4 tree's clk-mtk-v1.h: the mt6755 V1 clk
+ * sources gate debug/test blocks with #if on these; the 4.4 header
+ * defined them to 0. Without them -Werror=undef fires. */
+#define CLK_DEBUG		0
+#define DUMMY_REG_TEST		0
+
 extern int mtk_is_mtcmos_enable(void);
 extern spinlock_t *get_mtk_clk_lock(void);
 

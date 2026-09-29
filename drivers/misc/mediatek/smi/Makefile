@@ -11,6 +11,12 @@
 # GNU General Public License for more details.
 #
 
+ifeq ($(CONFIG_MACH_MT6755),y)
+# m681 (MT6755): SMI_J driver carried from the device-proven m681 4.4 tree
+# (drivers/misc/mediatek/smi @ 8191b444) — larb0-only posture, forced OSTD on
+# the LK-live display larb. The 4.9 smi_legacy.c below has no MT6755 support.
+obj-y += mt6755/
+else
 ifneq ($(CONFIG_MTK_SMI_VARIANT),y)
 ccflags-y += -I$(srctree)/drivers/clk/mediatek
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/m4u/$(CONFIG_MTK_PLATFORM)/
@@ -80,4 +86,5 @@ endif
 obj-y += smi_legacy.o
 else
 obj-y += $(subst ",,variant)/
+endif
 endif

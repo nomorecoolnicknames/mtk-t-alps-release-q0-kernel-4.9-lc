@@ -18,6 +18,11 @@ else
 	# phone
 	ifneq (,$(filter $(CONFIG_MTK_PLATFORM), "mt6735" "mt6580"))
 		obj-y += v2/
+	else ifneq (,$(filter $(CONFIG_MTK_PLATFORM), "mt6755"))
+		# m681: the device-proven m681 4.4 v2 core + mt6755 platform
+		# (branch m681-4.4-forge-flashed-20260824 @ 8191b444); its event
+		# table and DISP scenarios differ from the 4.9 mt6735 v2 core.
+		obj-y += v2_mt6755/
 	else
 		obj-y += v3/
 	endif

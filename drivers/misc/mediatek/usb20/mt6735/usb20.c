@@ -203,6 +203,12 @@ static void mt_usb_enable(struct musb *musb)
 	static int is_check;
 	#endif
 
+	/* FORGE m5c p28 DIAGNOSTIC (slot 81) */
+	{
+		extern void forge_kmark_ptr(int ms, unsigned long v);
+		forge_kmark_ptr(81, 1);
+	}
+
 	virt_enable++;
 	DBG(0, "begin <%d,%d>,<%d,%d,%d,%d>\n",
 			mtk_usb_power, musb->power,
@@ -243,6 +249,12 @@ static void mt_usb_enable(struct musb *musb)
 
 static void mt_usb_disable(struct musb *musb)
 {
+	/* FORGE m5c p28 DIAGNOSTIC (slot 82) */
+	{
+		extern void forge_kmark_ptr(int ms, unsigned long v);
+		forge_kmark_ptr(82, 1);
+	}
+
 	virt_disable++;
 
 	DBG(0, "begin, <%d,%d>,<%d,%d,%d,%d>\n",
@@ -349,6 +361,17 @@ void do_connection_work(struct work_struct *data)
 	/* 0 to enable, 1 to disable, disable currently */
 	static int exceed_gap = 1;
 	int usb_clk_state = NO_CHANGE;
+
+	/* FORGE m5c p26 DIAGNOSTIC heartbeat: this work runs every ~50ms, so
+	 * slot 77 holds a monotonically increasing counter while the SoC is
+	 * alive. If it stops at the freeze, count*50ms tells the exact death
+	 * time; if it keeps counting past the rc49 end, only printk died. */
+	{
+		extern void forge_kmark_ptr(int ms, unsigned long v);
+		static unsigned long forge_hb;
+
+		forge_kmark_ptr(77, ++forge_hb);
+	}
 
 	if (!mtk_musb->is_ready) {
 		/* re issue work */

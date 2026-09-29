@@ -29,6 +29,9 @@
 #include <linux/sched.h>
 #include <linux/init.h>
 #include <linux/cpu.h>
+
+/* FORGE m5c p25 DIAGNOSTIC (defined in arch/arm64/kernel/setup.c) */
+extern void forge_kmark_ptr(int ms, unsigned long v);
 #include <linux/cpufreq.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
@@ -220,6 +223,26 @@
 
 /* DVFS OPP table */
 #ifdef CONFIG_MACH_MT6735M
+/*
+ * forge: one operating point above the fused segment, added on request.
+ *
+ * This part reports segment_code 0x52, which _mt_cpufreq_get_cpu_level
+ * maps to CPU_LEVEL_2, commented "35P+ 1.25GHz" — and 1248MHz is the
+ * highest frequency MediaTek defines for MT6735M at all. There is no
+ * 1.3/1.45/1.5GHz table to switch to here; those belong to the MT6735
+ * and MT6753 blocks, for silicon binned differently.
+ *
+ * So this point is invented, not enabled. MAX_VPROC_VOLT is 125000 and
+ * the existing top OPP already sits on it, so 1352MHz runs at the same
+ * 1.25V the part uses for 1248MHz — no extra voltage for 8% more clock.
+ * Measured on this unit (2026-08-24): four cores hold 1352000 under a
+ * 4x busy-loop for ~40s at 28C with no panic. The 1495MHz point that
+ * was also tried is deliberately NOT here: it was never reached and it
+ * broke frequency selection below itself (performance governor sat at
+ * 1027000 with it present). First sign of a bad point is a spontaneous
+ * reboot or memory corruption, not an error message.
+ */
+#define CPU_DVFS_FREQ_OC1 (1352000)	/* KHz, forge: overclock */
 #define CPU_DVFS_FREQ0_1 (1248000)	/* KHz */
 #define CPU_DVFS_FREQ0   (1144000)	/* KHz */
 #define CPU_DVFS_FREQ1_1 (1092000)	/* KHz */
@@ -754,6 +777,7 @@ static struct mt_cpu_freq_info opp_tbl_e1_1[] = {
 
 /* CPU LEVEL 2, 1.25GHz segment */
 static struct mt_cpu_freq_info opp_tbl_e1_2[] = {
+	OP(CPU_DVFS_FREQ_OC1, 125000),	/* forge: 1352MHz, invented — see the define */
 	OP(CPU_DVFS_FREQ0_1, 125000),
 	OP(CPU_DVFS_FREQ1,  121875),
 	OP(CPU_DVFS_FREQ5,  118750),
@@ -2718,6 +2742,12 @@ static int _mt_cpufreq_set_locked(struct mt_cpu_dvfs *p, unsigned int cur_khz,
 
 	FUNC_ENTER(FUNC_LV_HELP);
 
+	/* FORGE m5c p25 DIAGNOSTIC: every DVFS transition brackets as
+	 * slot70 (target_khz, on entry) / slot71 (volt, on exit). If the
+	 * 4.6s whole-SoC freeze ever shows 70 without 71, the wedge is
+	 * inside set_cur_volt/set_cur_freq (Vproc brownout suspect). */
+	forge_kmark_ptr(70, target_khz);
+
 	volt = _mt_cpufreq_search_available_volt(p, target_khz);
 
 #ifdef CONFIG_CPU_DVFS_TURBO_MODE
@@ -2814,6 +2844,8 @@ static int _mt_cpufreq_set_locked(struct mt_cpu_dvfs *p, unsigned int cur_khz,
 
 	FUNC_EXIT(FUNC_LV_HELP);
 out:
+	/* FORGE m5c p25: closing bracket of slot 70 (see entry above) */
+	forge_kmark_ptr(71, volt);
 	return ret;
 }
 

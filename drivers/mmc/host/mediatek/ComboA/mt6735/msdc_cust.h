@@ -39,7 +39,11 @@
 /* Section 1: Device Tree                                     */
 /**************************************************************/
 /* Names used for device tree lookup */
-#define DT_COMPATIBLE_NAME      "mediatek,msdc"
+/* m5c: stock 2017 DTB describes msdc0/msdc1 as "mediatek,mt6735m-mmc"
+ * (same string the working 3.18 tree matches in sd.c); the Q0 reference
+ * name "mediatek,msdc" does not exist in that DTB, so eMMC never probes.
+ */
+#define DT_COMPATIBLE_NAME      "mediatek,mt6735m-mmc"
 
 
 /**************************************************************/

@@ -384,6 +384,18 @@ asmlinkage void aee_save_excp_regs(struct pt_regs *regs)
 		aee_excp_regs = regs;
 }
 
+/*
+ * m681 4.9 (A13v watchdog reset): if this handler itself takes a data abort,
+ * el1_sync does not count the abort as a new level, sees depth 2 again and
+ * calls us again - one entry per 0x270 bytes of stack, IRQs masked, until the
+ * stack has run down through DRAM and the hardware watchdog resets the phone.
+ * On A13v that walked 420 levels over the head-log window at 0x7f000000 and
+ * 1680 over 0x44800000; the faulting load was the ram console header read in
+ * aee_rr_curr_fiq_step(). Enter once per CPU; on re-entry wait for the
+ * watchdog, which leaves memory - and the logs in it - intact.
+ */
+static atomic_t forge_nested_entered[NR_CPUS];
+
 asmlinkage void aee_stop_nested_panic(struct pt_regs *regs)
 {
 	struct thread_info *thread = current_thread_info();
@@ -395,10 +407,15 @@ asmlinkage void aee_stop_nested_panic(struct pt_regs *regs)
 	struct wd_api *wd_api = NULL;
 #endif
 	struct pt_regs *excp_regs = NULL;
-	int prev_fiq_step = aee_rr_curr_fiq_step();
+	int prev_fiq_step;
 	/* everytime enter nested_panic flow, add 8 */
 	static int step_base = -8;
 	char tsbuf[TS_MAX_LEN] = {0};
+
+	if (atomic_inc_return(&forge_nested_entered[raw_smp_processor_id()]) > 1)
+		for (;;)
+			cpu_relax();
+	prev_fiq_step = aee_rr_curr_fiq_step();
 
 	step_base = step_base < 48 ? step_base + 8 : 56;
 
