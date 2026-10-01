@@ -1,0 +1,10 @@
+# Legacy (3.18) MTK_HWMON — ported for m5c 4.9 (forge/sensors49).
+# NOTE: MTK_HWMON is also defined by
+# drivers/misc/mediatek/sensors-1.0/hwmon/Kconfig (same type, no depends);
+# kconfig merges the two definitions. The legacy hwmon/ directory is only
+# built when MTK_SENSORS_1_0=n (see drivers/misc/mediatek/Makefile).
+config MTK_HWMON
+  bool CONFIG_MTK_HWMON
+  default n
+  help
+    CONFIG_MTK_HWMON

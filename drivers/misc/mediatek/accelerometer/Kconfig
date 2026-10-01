@@ -1,0 +1,25 @@
+# Legacy (3.18) accelerometer framework — ported for m5c 4.9 (forge/sensors49).
+# CUSTOM_KERNEL_ACCELEROMETER / MTK_AUTO_DETECT_ACCELEROMETER are also defined
+# by drivers/misc/mediatek/sensors-1.0/accelerometer/Kconfig with identical
+# type/depends; kconfig merges the duplicate definitions harmlessly.
+# The legacy directory is only built when MTK_SENSORS_1_0=n (see
+# drivers/misc/mediatek/Makefile).
+
+config MTK_AUTO_DETECT_ACCELEROMETER
+	bool "MTK_AUTO_DETECT_ACCELEROMETER"
+	depends on MTK_SENSOR_SUPPORT
+	help
+	  one load to support different accelerometer sensor.
+          If this option is set, multiple accelerometer driver
+          can be configured at the same time, but only one
+          can be probed.
+
+config CUSTOM_KERNEL_ACCELEROMETER
+	bool "CUSTOM_KERNEL_ACCELEROMETER"
+	help
+	  accelerometer sensor to detect accelerometer from x y z axis.
+          If the platform is supported for acceleometer, this
+          configuration should be configured, and the acceleometer
+          driver configuration should be configured as well.
+
+source "drivers/misc/mediatek/accelerometer/mc3410-new/Kconfig"

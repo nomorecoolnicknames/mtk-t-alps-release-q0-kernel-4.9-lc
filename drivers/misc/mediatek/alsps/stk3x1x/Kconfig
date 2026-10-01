@@ -1,0 +1,13 @@
+config MTK_STK3X1X
+	bool "STK3X1X for MediaTek package"
+	# forge (m5c 4.9): legacy hwmsen stack is mutually exclusive with
+	# the 4.9-native sensors-1.0 framework (symbol/ABI collisions).
+	depends on !MTK_SENSORS_1_0
+	default n
+	help
+	  Sensortek STK3X1X ambient light / proximity sensor.
+	  forge (m5c): this Kconfig declared MTK_STK3X1X_NEW while
+	  alsps/Makefile maps MTK_STK3X1X to this directory (and
+	  MTK_STK3X1X_NEW to a stk3x1x-new/ directory that does not exist in
+	  this tree), so the symbol could never build the driver. Renamed to
+	  match the Makefile. Stock m5c binds "stk3x1x" on alsps@48.

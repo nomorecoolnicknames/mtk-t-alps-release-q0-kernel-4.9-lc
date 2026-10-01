@@ -1,0 +1,11 @@
+config MTK_MC3410_NEW
+	bool "MC3410 for MediaTek package"
+	# forge (m5c 4.9): legacy hwmsen stack is mutually exclusive with
+	# the 4.9-native sensors-1.0 framework (symbol/ABI collisions).
+	depends on !MTK_SENSORS_1_0
+	default n
+	help
+	  It support different accelerometer sensor.
+          If this option is set,
+	  it will support
+          MC3410 Accelerometer.
