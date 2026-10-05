@@ -1019,12 +1019,6 @@ void kbase_gpu_complete_hw(struct kbase_device *kbdev, int js,
 
 	KBASE_TRACE_ADD_SLOT_INFO(kbdev, JM_JOB_DONE, kctx, katom, katom->jc,
 					js, completion_code);
-	if (unlikely(READ_ONCE(m5c_fence_diag)))
-		trace_printk("m5c-fence: irq-job-done tgid=%d atom=%u slot=%d event=%u\n",
-			     katom->kctx->tgid,
-			     (unsigned int)kbase_jd_atom_id(katom->kctx, katom), js,
-		     (unsigned int)completion_code);
-
 
 	if (job_tail != 0 && job_tail != katom->jc) {
 		bool was_updated = (job_tail != katom->jc);

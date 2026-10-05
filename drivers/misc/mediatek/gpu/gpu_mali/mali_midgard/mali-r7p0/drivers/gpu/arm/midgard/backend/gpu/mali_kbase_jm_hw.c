@@ -181,11 +181,6 @@ void kbase_job_hw_submit(struct kbase_device *kbdev,
 #endif
 	kbase_timeline_job_slot_submit(kbdev, kctx, katom, js);
 
-	if (unlikely(READ_ONCE(m5c_fence_diag)))
-		trace_printk("m5c-fence: submit-next tgid=%d atom=%u slot=%d\n",
-			     katom->kctx->tgid,
-			     (unsigned int)kbase_jd_atom_id(katom->kctx, katom), js);
-
 	kbase_reg_write(kbdev, JOB_SLOT_REG(js, JS_COMMAND_NEXT),
 						JS_COMMAND_START, katom->kctx);
 }

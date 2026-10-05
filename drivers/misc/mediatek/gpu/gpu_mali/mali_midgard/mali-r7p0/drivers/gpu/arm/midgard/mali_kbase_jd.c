@@ -902,14 +902,6 @@ bool jd_submit_atom(struct kbase_context *kctx,
 	katom->jc = user_atom->jc;
 	katom->coreref_state = KBASE_ATOM_COREREF_STATE_NO_CORES_REQUESTED;
 	katom->core_req = core_req;
-	if (unlikely(READ_ONCE(m5c_fence_diag)))
-		trace_printk("m5c-fence: atom tgid=%d atom=%u req=%u dep0=%u dep1=%u\n",
-			     katom->kctx->tgid,
-			     (unsigned int)kbase_jd_atom_id(katom->kctx, katom),
-		     (unsigned int)core_req,
-		     (unsigned int)user_atom->pre_dep[0].atom_id,
-		     (unsigned int)user_atom->pre_dep[1].atom_id);
-
 	katom->atom_flags = 0;
 	katom->retry_count = 0;
 	katom->need_cache_flush_cores_retained = 0;
@@ -1318,12 +1310,6 @@ void kbase_jd_done_worker(struct work_struct *data)
 	js_policy = &kbdev->js_data.policy;
 
 	KBASE_TRACE_ADD(kbdev, JD_DONE_WORKER, kctx, katom, katom->jc, 0);
-	if (unlikely(READ_ONCE(m5c_fence_diag)))
-		trace_printk("m5c-fence: done-worker tgid=%d atom=%u event=%u\n",
-			     katom->kctx->tgid,
-			     (unsigned int)kbase_jd_atom_id(katom->kctx, katom),
-		     (unsigned int)katom->event_code);
-
 
 	kbase_backend_complete_wq(kbdev, katom);
 

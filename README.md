@@ -1,48 +1,56 @@
-# Meizu M5c — Android 13 kernel
+# Meizu M5c — LOS20 kernel baseline
 
-Linux 4.9.188 with the MediaTek MT6735-family platform drivers and the M5c
-verified M5c stock-board device tree. The board and driver selection follows
-the tested kernel configuration; chipset names are not interchangeable device IDs.
+Linux 4.9.188 for the Meizu M5c / MT6737. This branch preserves the runtime
+source and configuration selected by the September 30, 2026 Android 13 ROM
+kernel. The primary [m5c-4.9-a13 branch](https://github.com/nomorecoolnicknames/mtk-t-alps-release-q0-kernel-4.9-lc/tree/m5c-4.9-a13)
+continues separately with newer fence instrumentation, CPU accounting and
+build improvements. This baseline does not replace that work.
 
-| Component | Driver | Status |
-| --- | --- | --- |
-| Display | MT6735 DDP/CMDQ/DSI, board LCM | Android 13 boots and renders; smoothness is still being investigated. |
-| GPU | Mali Midgard r7p0 | Hardware rendering observed. Fence timing diagnostics are new and disabled by default. |
-| Touch | MTK TPD, selected GT9XXTB HotKnot driver | Input wrapper present; complete physical controller acceptance remains open. |
-| Wi-Fi | MediaTek WLAN gen2 and WMT/STP | Scanning observed; full connection and sleep testing remains open. |
-| CPU accounting | CPUFreq core and statistics | Real time-in-state counters enabled; CPUFreq core/statistics objects compile. Kernel integration and runtime verification pending. |
-| PMIC and battery | Board MediaTek power drivers | Existing telemetry retained; full charging and suspend validation remains open. |
-| Bluetooth, GPS, modem | WMT/STP and board transport drivers | Source present; complete runtime acceptance remains open. |
-| Audio, camera, sensors | Board MediaTek drivers | Source present; complete runtime acceptance remains open. |
+| Component | Driver / interface | Status |
+|---|---|---|
+| Display | MT6735 DDP/CMDQ/DSI, M5c panel | Earlier Android 13 boot/rendering observed; smoothness needs work |
+| GPU | Mali Midgard r7p0 | Hardware rendering observed on the baseline; no performance claim |
+| Input | MediaTek TPD and board controller | Physical controller and full gesture acceptance remain open |
+| Wi-Fi | MediaTek WLAN gen2, WMT/STP | Earlier scanning observed; association and traffic need verification |
+| Interrupts and power | CIRQ, SPM, CPUFreq | CIRQ match/ack corrections included; deep power states gated by default |
+| Bluetooth, GPS and modem | Board transport and vendor interfaces | Complete runtime acceptance pending |
+| Audio, camera and sensors | Board drivers and vendor interfaces | Complete runtime acceptance pending |
 
-## Build
+`forge_spm_lowpower=0` deliberately gates suspend, deep idle and SODI while
+PCM firmware can still load. It is a bring-up limitation, not a working
+low-power implementation. The baseline does not include the primary branch's
+later disabled-by-default fence diagnostics or CPU_FREQ_STAT selection.
 
-Use an AArch64 Android GCC 4.9 toolchain. The tested compiler reports
-`4.9 20150123`; newer toolchains require separate validation. Use an open
-host `dtc` supporting `-@` (verified version 1.6.1). The stock-board hardware
-description is included as text in `mediatek/m5c-stock.dts`: recompilation
-reproduces the accepted stock DTB byte for byte. The donor-generated
-`k37mv1_bsp_k49` DTS remains separate and is not the M5c deployment target.
-No proprietary DCT executable is needed.
+## Build inputs
 
-The matching public toolchain is AOSP `aarch64-linux-android-4.9`, commit
-`6ca6746f5fafd7d1b162451dce2ae40741529e9e` (`android-7.0.0_r1`). Select
-its `ld.bfd` explicitly; its default `ld` differs from the tested linker.
+The exact generated configuration is provided as
+`arch/arm64/configs/m5c_a13_rom.config` (SHA-256
+`07a6d72905dab646ba0015f8d22ac93a4f244f3789c438cd2637fd529465e323`).
+Use the AOSP Android GCC 4.9 toolchain at
+[6ca6746f5fafd7d1b162451dce2ae40741529e9e](https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+/6ca6746f5fafd7d1b162451dce2ae40741529e9e/),
+with its `ld.bfd`; the tested compiler reports `4.9 20150123`.
 
 ```sh
 mkdir -p out
-cp arch/arm64/configs/m5c_a13_verified.config out/.config
+cp arch/arm64/configs/m5c_a13_rom.config out/.config
 make O="$PWD/out" ARCH=arm64 CROSS_COMPILE=aarch64-linux-android- \
-    LD=aarch64-linux-android-ld.bfd \
-    TARGET_BUILD_VARIANT=userdebug HOSTCFLAGS=-fcommon olddefconfig
+    LD=aarch64-linux-android-ld.bfd TARGET_BUILD_VARIANT=userdebug \
+    HOSTCFLAGS=-fcommon olddefconfig
 make O="$PWD/out" ARCH=arm64 CROSS_COMPILE=aarch64-linux-android- \
-    LD=aarch64-linux-android-ld.bfd \
-    TARGET_BUILD_VARIANT=userdebug HOSTCFLAGS=-fcommon -j4 Image.gz-dtb
+    LD=aarch64-linux-android-ld.bfd TARGET_BUILD_VARIANT=userdebug \
+    HOSTCFLAGS=-fcommon -j4 Image
 ```
 
-The output contains the compressed kernel followed by
-`arch/arm64/boot/dts/mediatek/m5c-stock.dtb` (expected SHA-256
-`671d3410a1cc33eaf22917d1c5408713c1dbf6ec1c6672f77d309408c22c5c6f`). A successful compilation is
-not a flashable-ROM or hardware-acceptance claim. Check the generated configuration,
-linked drivers and board DTB before packaging with the device's own boot ramdisk.
-The upstream kernel documentation and licensing are retained in `README` and `COPYING`.
+Build `Image` and append the board's original stock DTB, rather than the donor
+DTS selected by the historical defconfig. The stock-board description is also
+included as text at `arch/arm64/boot/dts/mediatek/m5c-stock.dts`; its DTB must
+match SHA-256 `671d3410a1cc33eaf22917d1c5408713c1dbf6ec1c6672f77d309408c22c5c6f`.
+Generated board files and the stock description retained from the primary branch
+are supporting inputs. They do not change the baseline's compiled runtime sources.
+No binary kernel, firmware, signing key or device capture is included.
+
+Source/configuration correspondence was checked against the retained ROM
+kernel inputs. This publication does not establish a new kernel rebuild,
+flash/readback, complete hardware acceptance or daily-driver readiness.
+Original authors, copyright notices and GPL licensing in [COPYING](COPYING)
+are preserved; upstream notes remain in [README](README).

@@ -27,10 +27,6 @@
 #include <asm/page.h>
 
 #include <linux/atomic.h>
-#include <linux/kernel.h>
-
-/* Read-only timing diagnostic; disabled by default. */
-extern bool m5c_fence_diag;
 #include <linux/highmem.h>
 #include <linux/hrtimer.h>
 #include <linux/ktime.h>

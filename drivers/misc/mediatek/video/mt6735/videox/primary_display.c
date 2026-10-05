@@ -4639,10 +4639,6 @@ unsigned int forge_rel_extra;
  * 100 ms timeout, so producers are never wedged. */
 unsigned int forge_rel_defer = 1;
 
-static bool m5c_release_diag;
-module_param_named(m5c_release_diag, m5c_release_diag, bool, 0644);
-MODULE_PARM_DESC(m5c_release_diag, "Trace release queue and EOF timing; default off");
-
 struct forge_relwin_stat {
 	unsigned int n;
 	unsigned int mid;	/* fell between SOF and EOF */
@@ -4675,8 +4671,6 @@ static void _forge_rdma0_irq_cb(enum DISP_MODULE_ENUM module, unsigned int reg_v
 	if (module != DISP_MODULE_RDMA0 || !(reg_val & (1 << 2)))
 		return;
 	forge_eof_seq++;
-	if (unlikely(READ_ONCE(m5c_release_diag)))
-		trace_printk("m5c-release: eof seq=%u\n", forge_eof_seq);
 	if (forge_sig_open_ns) {
 		unsigned long long dt = sched_clock() - forge_sig_open_ns;
 
@@ -4735,13 +4729,7 @@ static void forge_rel_signal(unsigned int layer, int idx)
 {
 	forge_relwin_sample(&forge_relwin_sig, "sig", idx, -1, -1);
 	forge_sig_open_ns = sched_clock();
-	if (unlikely(READ_ONCE(m5c_release_diag)))
-		trace_printk("m5c-release: signal-enter layer=%u idx=%d eof=%u\n",
-			     layer, idx, forge_eof_seq);
 	mtkfb_release_fence(primary_session_id, layer, idx);
-	if (unlikely(READ_ONCE(m5c_release_diag)))
-		trace_printk("m5c-release: signal-exit layer=%u idx=%d eof=%u\n",
-			     layer, idx, forge_eof_seq);
 }
 
 static int forge_relq_push(unsigned int layer, int idx)
@@ -4761,10 +4749,6 @@ static int forge_relq_push(unsigned int layer, int idx)
 	forge_relq[forge_relq_tail].layer = layer;
 	forge_relq[forge_relq_tail].idx = idx;
 	forge_relq[forge_relq_tail].seq = forge_eof_seq;
-	if (unlikely(READ_ONCE(m5c_release_diag)))
-		trace_printk("m5c-release: enqueue layer=%u idx=%d eof=%u head=%u tail=%u\n",
-			     layer, idx, forge_relq[forge_relq_tail].seq,
-			     forge_relq_head, forge_relq_tail);
 	forge_relq_tail = next;
 	spin_unlock_irqrestore(&forge_relq_lock, flags);
 	return 1;
@@ -4803,9 +4787,6 @@ static void forge_relq_drain(int force)
 
 		forge_reldef_defn++;
 		forge_reldef_w_sum += forge_eof_seq - ent.seq;
-		if (unlikely(READ_ONCE(m5c_release_diag)))
-			trace_printk("m5c-release: drain layer=%u idx=%d queued_eof=%u now_eof=%u force=%d\n",
-				     ent.layer, ent.idx, ent.seq, forge_eof_seq, force);
 		forge_rel_signal(ent.layer, ent.idx);
 	}
 }
@@ -4923,10 +4904,6 @@ static int _ovl_fence_release_callback(uint32_t userdata)
 				int rel = fence_idx - subtractor -
 					  (int)forge_rel_extra;
 
-				if (unlikely(READ_ONCE(m5c_release_diag)))
-					trace_printk("m5c-release: callback layer=%d idx=%d sub=%d extra=%u rel=%d eof=%u defer=%u\n",
-						     i, fence_idx, subtractor, forge_rel_extra,
-						     rel, forge_eof_seq, forge_rel_defer);
 				if (!forge_rel_defer || !forge_relq_push(i, rel)) {
 					if (forge_rel_defer)
 						forge_reldef_inline++;

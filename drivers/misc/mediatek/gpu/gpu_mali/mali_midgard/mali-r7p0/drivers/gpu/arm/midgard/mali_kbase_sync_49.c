@@ -21,10 +21,6 @@
 
 #include "mali_kbase_sync_compat.h"
 
-bool m5c_fence_diag;
-module_param_named(m5c_fence_diag, m5c_fence_diag, bool, 0644);
-MODULE_PARM_DESC(m5c_fence_diag, "Trace Mali atom and fence timing; default off");
-
 /* Provided by drivers/misc/mediatek/sync/mtk_sync.c (built-in). */
 struct fence_data {
 	__u32 value;

@@ -197,21 +197,8 @@ static enum base_jd_event_code kbase_fence_trigger(struct kbase_jd_atom *katom, 
 	 * rejected, exactly as the original code did. */
 	atomic_inc(&forge_kb_trig_run);
 	forge_kbase_stat_dump();
-	if (unlikely(READ_ONCE(m5c_fence_diag)) && katom->fence && katom->fence->fence)
-		trace_printk("m5c-fence: trigger-enter tgid=%d atom=%u context=%llu seqno=%u\n",
-			     katom->kctx->tgid,
-			     (unsigned int)kbase_jd_atom_id(katom->kctx, katom),
-		     (unsigned long long)katom->fence->fence->context,
-		     katom->fence->fence->seqno);
 	if (kbase_sync_fence_signal(katom->fence) != 0)
 		return BASE_JD_EVENT_JOB_CANCELLED;
-	if (unlikely(READ_ONCE(m5c_fence_diag)) && katom->fence && katom->fence->fence)
-		trace_printk("m5c-fence: trigger-exit tgid=%d atom=%u context=%llu seqno=%u\n",
-			     katom->kctx->tgid,
-			     (unsigned int)kbase_jd_atom_id(katom->kctx, katom),
-		     (unsigned long long)katom->fence->fence->context,
-		     katom->fence->fence->seqno);
-
 
 	return (result < 0) ? BASE_JD_EVENT_JOB_CANCELLED : BASE_JD_EVENT_DONE;
 #else
@@ -485,12 +472,6 @@ int kbase_prepare_soft_job(struct kbase_jd_atom *katom)
 				atomic_inc(&forge_kb_prep_fail);
 				return -EINVAL;
 			}
-			if (unlikely(READ_ONCE(m5c_fence_diag)) && katom->fence && katom->fence->fence)
-				trace_printk("m5c-fence: fence-bound tgid=%d atom=%u context=%llu seqno=%u\n",
-					     katom->kctx->tgid,
-					     (unsigned int)kbase_jd_atom_id(katom->kctx, katom),
-				     (unsigned long long)katom->fence->fence->context,
-				     katom->fence->fence->seqno);
 			fence.basep.fd = fd;
 			if (0 != copy_to_user((__user void *)(uintptr_t) katom->jc, &fence, sizeof(fence))) {
 				katom->fence = NULL;
