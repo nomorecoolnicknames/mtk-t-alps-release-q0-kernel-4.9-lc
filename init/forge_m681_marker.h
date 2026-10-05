@@ -1,31 +1,14 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * forge_m681_marker.h - persistent DRAM stage markers for m681 (MT6755).
- *
- * m681 attempt3: ported from the vgdn FORCE saga (BRINGUP_STATE.md) via the
- * surviving sibling kernel-nokia-5.1-m681/init/forge_m681_marker.{c,h}.
- * The mechanism leaves breadcrumb words in a DRAM carveout that survives a
- * WDT reset so a single flash localises the early-boot hang stage.
- *
- * Channel: physical 0x46100000.  This address lies inside the DTB
- * reserved-memory node "@46000000" (reg <0 0x46000000 0 0x400000>) in
- * arch/arm64/boot/dts/mt6755.dtsi, so it is reserved from the kernel
- * allocator and is the vgdn-proven WDT-surviving location.  The clean MTK
- * ram_console DRAM region @0x44400000 is overwritten by the recovery boot,
- * and SPM 0x10006000 conflicts with the SPM driver ioremap, so neither is a
- * stable cross-reboot marker location (see POSTMORTEM_native_boot_attempt1.md).
- *
- * COLD-SAFE readback: 0x46100000 is DRAM, lost on a true cold/BROM recovery.
- * Each marker ALSO emits pr_emerg("[FORGE_M681] stage 0xNN") so that if the
- * kernel ever reaches printk + ram_console, the stage lands in the normal log
- * that MTK kedump flushes to the expdb partition (FLASH, survives cold). See
- * the readback recipe at the bottom of init/forge_m681_marker.c.
- *
- * After a WDT reset, read from TWRP (CONFIG_DEVMEM kernel) via:
- *   adb shell devmem 0x46100100      -> rolling stage (0xF681xx)
- *   adb shell devmem 0x46100104      -> last reached stage (raw u32)
- *   adb shell devmem 0x46100108      -> 0x46524745 ('FRGE') if our kernel ran
- *   adb shell dd if=/dev/mem of=/sdcard/dram.bin bs=4096 skip=287489 count=1
+ * Persistent DRAM stage markers for M681 (MT6755) early-boot diagnostics.
+ * The carveout at physical 0x46100000 is reserved by the DTB memory node
+ * at 0x46000000, size 0x400000. Marker words survive a warm watchdog reset;
+ * a cold reset loses them. The recovery boot overwrites the separate
+ * ram_console region, and SPM mappings are unsuitable for persistent markers.
+ * Each marker also emits its stage with pr_emerg so normal kernel logs can
+ * retain diagnostics through the MediaTek kedump path.
+ * Rolling stage: 0x46100100; last stage: 0x46100104;
+ * kernel-ran signature at 0x46100108: 0x46524745.
  */
 
 #ifndef _FORGE_M681_MARKER_H
@@ -67,7 +50,7 @@
 #define FORGE_STAGE_ARCH_SETUP_EXIT		0x3D	/* 61 A12 */
 #define FORGE_STAGE_RAM_CONSOLE_INIT		0x46	/* 70 */
 
-/* FORCE8: time_init() entry / of_clk_init() split (the BIGGEST vgdn wall). */
+/* time_init() entry and of_clk_init() stage markers. */
 #define FORGE_STAGE_TIME_INIT_ENTRY		0x51	/* time_init() entered   */
 #define FORGE_STAGE_TIME_POST_OF_CLK_INIT	0x52	/* of_clk_init returned  */
 #define FORGE_STAGE_TIME_PRE_CLOCKSOURCE_OF_INIT	0x53

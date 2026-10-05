@@ -25,6 +25,9 @@ extern LCM_DRIVER ili9885_fhd_dsi_vdo_txd_lcm_drv1;
 #endif
 /* #include <mach/mt_gpio.h> */
 #endif
+#if defined(HX8399_FHD_DSI_VDO_TXD_AUO_AL1518)
+extern LCM_DRIVER hx8399_fhd_dsi_vdo_txd_auo_al1518_lcm_drv;
+#endif
 LCM_DSI_MODE_CON lcm_dsi_mode;
 
 /* used to identify float ID PIN status */
@@ -40,6 +43,9 @@ LCM_DSI_MODE_CON lcm_dsi_mode;
 #endif
 
 LCM_DRIVER *lcm_driver_list[] = {
+#if defined(HX8399_FHD_DSI_VDO_TXD_AUO_AL1518)
+	&hx8399_fhd_dsi_vdo_txd_auo_al1518_lcm_drv,
+#endif
 #if defined(ILI9881P_HD_DSI_TXD)
 	&ili9881p_hd_dsi_txd_lcm_drv,
 #endif
@@ -1056,6 +1062,9 @@ LCM_DRIVER *lcm_driver_list[] = {
 };
 
 unsigned char lcm_name_list[][128] = {
+#if defined(HX8399_FHD_DSI_VDO_TXD_AUO_AL1518)
+	"hx8399_fhd_dsi_vdo_txd_auo_al1518",
+#endif
 	"ili9881p_hd_dsi_txd",
 #if defined(ILI9885_FHD_DSI_VDO_TXD1)
 	"ili9885_fhd_dsi_vdo_txd1",

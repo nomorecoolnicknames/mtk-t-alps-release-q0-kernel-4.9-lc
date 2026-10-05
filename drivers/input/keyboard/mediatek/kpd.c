@@ -469,8 +469,6 @@ static const struct of_device_id kpd_of_match[] = {
 	 * (fallback "mediatek,mt6735m-keypad"); matches 3.18 kpd.c:74.
 	 */
 	{.compatible = "mediatek,mt6735-keypad"},
-	/* m681: "mediatek,mt6755-keypad", "mediatek,kp" (mt6755.dtsi) */
-	{.compatible = "mediatek,mt6755-keypad"},
 	{},
 };
 

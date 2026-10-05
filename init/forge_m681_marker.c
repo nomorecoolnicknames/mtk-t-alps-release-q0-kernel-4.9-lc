@@ -192,7 +192,7 @@ static struct console forge_console = {
 #define FORGE_WDT_SWRST_KEY	0x1209U
 
 /* m681 #113: RGU reset forensics + request-line quiesce (57s silent-reset
- * hunt, Documentation/m681-4.4-port/THERMAL_57S_SILENT_RESET.md §#113).
+ * hunt, earlier silent-reset investigation).
  * WDT_STA latches WHICH source caused the LAST warm reset (it is the only
  * artifact that distinguishes a counter-timeout reset (= hang, kickers
  * starved, dog bit later) from a request-LINE reset (thermal-direct / SPM /
@@ -551,7 +551,7 @@ EXPORT_SYMBOL(forge_m681_irq_trace);
  * v44b tried to arm it by direct writel from start_kernel (pre-mm_init) —
  * BROKE boot (kick_count=0): that mapping path is non-functional for SoC
  * register space that early.  v45 tried instead to let mtk_wdt_probe run
- * and apply mode_config there — but FACT (v46 handoff §0): probe calls
+ * and apply mode_config there — but earlier board tests: probe calls
  * request_irq at mtk_wdt.c:769 BEFORE the v45 single-mode mode_config at
  * line 815 is reached, and on the graft tree that request_irq path appears
  * to wedge; WDT is left in preloader dual-mode+IRQ and AXI bus-hang later
@@ -594,7 +594,7 @@ static void forge_m681_wdt_arm(void)
 	writel(mode, b + FORGE_WDT_MODE_OFF);
 
 	/* m681 session-4 #97 (TRACK-A1): extend the WDT timeout to the hardware
-	 * maximum.  FACT (#96 capture k44_001.dmesg): our 4.4 kernel boots to
+	 * maximum.  earlier kernel logs: our 4.4 kernel boots to
 	 * t=22.8s + adb (SurfaceFlinger up, NVRAM restoring) but resets before
 	 * boot_completed (bootreason=wdt_by_pass_pwk).  The preloader LENGTH (0x5000)
 	 * gives only ~20s, too short for the slow mediaserver/agps/NVRAM userspace
@@ -726,6 +726,9 @@ static void __maybe_unused forge_wdt_ticker_start(void)
  */
 static int __init forge_wdt_ticker_late_init(void)
 {
+	if (IS_ENABLED(CONFIG_M3NOTE_DIAGNOSTIC))
+		return 0;
+
 	forge_wdt_ticker_start();
 	return 0;
 }
@@ -758,7 +761,7 @@ void forge_m681_wdt_kick(void)
 	 * Proper userspace WDT mgmt = re-enable stock mtk_wdt later, now that the
 	 * timer works. */
 
-	/* m681 v47: manual SWRST backstop (handoff §4 option 1C).  If the
+	/* m681 v47: manual SWRST backstop (early-boot reset handling).  If the
 	 * initcall path is recursing oddly (kick_count climbing past the total
 	 * realistic initcall count of ~600 for 3.18.140 m6-graft, threshold
 	 * well above that) while system_state is still pre-RUNNING, the chip
@@ -816,7 +819,7 @@ EXPORT_SYMBOL(forge_m681_wdt_kick);
 /*
  * m681 v86: userspace-surviving WDT kicker via HRTIMER (was a kthread v81-v85).
  *
- * FACT (v82-v85): the kthread variant was CREATED ok (arm-proof@0xE0 = A11E)
+ * Earlier kernel logs showed: the kthread variant was CREATED ok (arm-proof@0xE0 = A11E)
  * but its loop body NEVER ran (heartbeat@0xDC stayed 0).  On this SMP-disabled,
  * HPS-skipped single-CPU graft the kicker kthread never got a timeslice, so
  * the armed 30s HW-WDT still guillotined userspace before adbd/eMMC could
@@ -853,6 +856,9 @@ static enum hrtimer_restart forge_wdt_hrtimer_fn(struct hrtimer *t)
 
 static int __init forge_wdt_hrtimer_init(void)
 {
+	if (IS_ENABLED(CONFIG_M3NOTE_DIAGNOSTIC))
+		return 0;
+
 	/* v123 DISABLED: do NOT arm the hrtimer WDT kicker. It was added (v86) as a
 	 * frozen-timer workaround, but the arch timer is NOW FIXED (cpuxgpt enabled),
 	 * so this CLOCK_MONOTONIC hrtimer actually FIRES every 5s and keeps the dog
@@ -883,9 +889,9 @@ static int __init forge_wdt_hrtimer_init(void)
 core_initcall(forge_wdt_hrtimer_init);
 
 /*
- * m681 v169: SPM power-domain state dump (FACT-gather, reliable channel).
+ * m681 v169: SPM power-domain state dump (hardware state inspection, reliable channel).
  *
- * Both recovery-side forensic channels are dead on this setup (FACTs, v169):
+ * Both recovery-side forensic channels are dead on this setup (observed during earlier testing):
  *   - DRAM marker 0x444f0000 is CLOBBERED by TWRP (reads back ELF magic
  *     7f 45 4c 46 after a wedge+recovery dwell), so post-mortem marker reads
  *     from recovery are garbage.
@@ -894,7 +900,7 @@ core_initcall(forge_wdt_hrtimer_init);
  * So the ONLY trustworthy channel is forge_klog on p4, which needs the build
  * to BOOT to late_initcall. This dump runs as a late_initcall in a *booting*
  * (display-denied) build and prints the DIS MTCMOS power state, settling the
- * refuted "DIS power-domain never comes up" theory with a FACT: mt_scpsys_init
+ * refuted "DIS power-domain never comes up" theory as observed: mt_scpsys_init
  * (CLK_OF_DECLARE "mediatek,mt6755-scpsys") UNCONDITIONALLY powers DIS on at
  * of_clk_init (clk-mt6755-pg.c:2110), long before any deny gate, so a build
  * that boots at all has already powered DIS. This confirms the actual state.
@@ -903,6 +909,9 @@ static int __init forge_spm_dump(void)
 {
 	void __iomem *spm;
 	u32 cfg, sta, sta2, dis, mfg, isp, mm;
+
+	if (IS_ENABLED(CONFIG_M3NOTE_DIAGNOSTIC))
+		return 0;
 
 	if (forge_virt)
 		return 0;	/* Rung C: 0x10006000 = virt PCIe MMIO window */
@@ -1044,6 +1053,9 @@ void forge_m681_emergency_mark(void)
 
 static int __init forge_panic_blackbox_init(void)
 {
+	if (IS_ENABLED(CONFIG_M3NOTE_DIAGNOSTIC))
+		return 0;
+
 	if (forge_virt)
 		return 0;	/* reserved region is MTK-hw only */
 	forge_panic_dump_base = memremap(FORGE_PANIC_DUMP_PHYS,
@@ -1059,7 +1071,7 @@ late_initcall(forge_panic_blackbox_init);
 /*
  * m681 v48: panic-notifier direct-SWRST recovery safety net.
  *
- * FACT (5-cycle v44-v47 handoff §0): the toprgu HW timer-WDT expired-time
+ * Earlier reset tests showed: the toprgu HW timer-WDT expired-time
  * SWRST does NOT happen reliably on mt6755 graft — preloader bin-string
  * `"WDT does not trigger reboot"` and the v45/v46/v47 self-arm / SWRST-
  * backstop changes never produced a warm return.  The ONLY recovery path
@@ -1317,6 +1329,9 @@ EXPORT_SYMBOL(forge_m681_wdt_swrst);
  */
 void __init forge_m681_marker_early_init(void)
 {
+	if (IS_ENABLED(CONFIG_M3NOTE_DIAGNOSTIC))
+		return;
+
 	if (forge_spm_base || forge_spm_base2)
 		return;	/* already mapped */
 
@@ -1454,7 +1469,7 @@ void __init forge_enable_cpuxgpt(void)
  * m681 LK reads the bootloader message from the "para" partition (device LK
  * strings "[mboot_recovery_load_misc]", "para", "boot-recovery"; ROM fstab
  * /dev/block/mmcblk0p2 /misc emmc; GPT p2 = para, 0x80000), and FACT
- * (flash-m681, 2026-09-28 18:21) "boot-recovery" there sends a plain reboot
+ *  "boot-recovery" there sends a plain reboot
  * to TWRP. The bootguard thread below arms that message as soon as para
  * exists (only after checking its GPT name); userspace clears it on
  * sys.boot_completed. USB configuration switches the deadline off; if the
@@ -1477,12 +1492,9 @@ core_param(forge_bcb_clear_on_usb, forge_bcb_clear_on_usb, int, 0644);
 static int forge_usb_lost_deadline = 60;
 core_param(forge_usb_lost_deadline, forge_usb_lost_deadline, int, 0644);
 extern void forge_usb_log_state(const char *why) __attribute__((weak));
-/* PMIC RTC recovery flag, armed at postcore where the pwrap HAL exists
- * (pwrap_hal_v1.c); the BCB takes over once it is armed. */
-extern int forge_rtc_recovery_flag(int set) __attribute__((weak));
 
 /*
- * Where the bootloader message lives. m681 GPT (flash-m681 journal §3,
+ * Where the bootloader message lives. m681 GPT (board geometry checked with
  * sgdisk + fastboot getvar): p2 "para" = LBA 32832, 1024 sectors (512 KiB),
  * whole eMMC 30535680 sectors.
  *
@@ -1659,7 +1671,7 @@ static int forge_bcb_write(const char *cmd, const char *status)
 }
 
 /*
- * A13s (flash-m681 journal §7.11): adb came up, then `adb root` re-bound the
+ * Earlier USB recovery tests showed: adb came up, then `adb root` re-bound the
  * UDC, the gadget never came back and the phone sat alive and unreachable,
  * because the first configuration had switched the deadline off for good.
  * So keep watching while the BCB is still armed (userspace clears it on
@@ -1710,10 +1722,10 @@ static void forge_bootguard_usb_watch(void)
 }
 
 /*
- * G1.7 boot guard (flash-m681's proposal after A13 on a13d looped every
+ * Boot guard (earlier Android 13 boots looped every
  * 20.4 s, dying before the 120 s deadline ever armed the BCB): arm the BCB
  * as soon as the eMMC's para partition exists, so ANY death after that -
- * panic, init's fatal reboot, WDT - lands in TWRP (FACT 2026-09-28 18:21:
+ * panic, init's fatal reboot, WDT - lands in TWRP (observed:
  * this LK honours "boot-recovery" in p2 on a plain reboot; TWRP does not
  * clear it). Userspace clears the message on sys.boot_completed; a host
  * configuring the USB gadget only switches the deadline off; without it,
@@ -1732,21 +1744,15 @@ static int forge_bootguard_fn(void *unused)
 				forge_m681_mark_aux(0xDB, 0);
 				pr_emerg("[FORGE_M681] bootguard: BCB boot-recovery armed in %s p%d\n",
 					 forge_bcb_disk, FORGE_BCB_PARTNO);
-				/* the BCB covers from here; the early RTC flag
-				 * must not outlive this boot */
-				if (forge_rtc_recovery_flag)
-					forge_rtc_recovery_flag(0);
 			}
 		}
 		if (&forge_usb_configured && forge_usb_configured) {
 			/* Success milestone for the deadline only: the BCB stays
 			 * armed until userspace clears it on sys.boot_completed
-			 * (flash-m681 device a026049), so a later death before
+			 * , so a later death before
 			 * that - init's fatal reboot, a crash loop - still ends
 			 * in TWRP. forge_bcb_clear_on_usb=1 restores the old
 			 * clear-here behaviour for images without that rc. */
-			if (!armed && forge_rtc_recovery_flag)
-				forge_rtc_recovery_flag(0);	/* booted fine */
 			err = (armed && forge_bcb_clear_on_usb) ?
 				forge_bcb_write(NULL, NULL) : 0;
 			forge_m681_mark_aux(0xDC, (u32)err);
@@ -1758,8 +1764,6 @@ static int forge_bootguard_fn(void *unused)
 			return 0;
 		}
 		if (forge_boot_deadline <= 0) {
-			if (!armed && forge_rtc_recovery_flag)
-				forge_rtc_recovery_flag(0);
 			pr_emerg("[FORGE_M681] bootguard: disabled at runtime, BCB %s\n",
 				 armed ? "left armed" : "not armed");
 			return 0;
@@ -1791,7 +1795,7 @@ static int forge_bootguard_fn(void *unused)
  * to rtc_mark_recovery()/rtc_mark_fast(), and the RTC driver is not built,
  * so without this `reboot recovery` and init's fatal reboot (target
  * "bootloader" on A13) both come back to the normal image - the 20.4 s loop
- * of a13d. This LK has no usable fastboot (flash-m681: "fastboot boot" =
+ * of a13d. This LK has no usable fastboot (board bootloader: "fastboot boot" =
  * unknown command), so TWRP is the useful landing for "bootloader" too.
  */
 static int forge_bcb_reboot_notify(struct notifier_block *nb,
@@ -1805,8 +1809,6 @@ static int forge_bcb_reboot_notify(struct notifier_block *nb,
 		return NOTIFY_DONE;
 	err = forge_bcb_write("boot-recovery", "forge-reboot");
 	pr_emerg("[FORGE_M681] reboot %s: BCB boot-recovery %d\n", cmd, err);
-	if (forge_rtc_recovery_flag)	/* second, independent path */
-		forge_rtc_recovery_flag(1);
 	return NOTIFY_DONE;
 }
 
@@ -1817,6 +1819,9 @@ static struct notifier_block forge_bcb_reboot_nb = {
 static int __init forge_bootguard_init(void)
 {
 	struct task_struct *t;
+
+	if (IS_ENABLED(CONFIG_M3NOTE_DIAGNOSTIC))
+		return 0;
 
 	if (!forge_virt)
 		register_reboot_notifier(&forge_bcb_reboot_nb);
@@ -1879,6 +1884,9 @@ static struct console forge_head_console = {
 /* setup_arch, after arm64_memblock_init(): keep the window from the allocator. */
 void __init forge_m681_headlog_reserve(void)
 {
+	if (IS_ENABLED(CONFIG_M3NOTE_DIAGNOSTIC))
+		return;
+
 	memblock_reserve(FORGE_HLOG_PHYS, FORGE_HLOG_SIZE);
 }
 
@@ -1886,6 +1894,9 @@ void __init forge_m681_headlog_reserve(void)
  * linear map only if the LK handed it over as plain RAM. */
 void __init forge_m681_headlog_init(void)
 {
+	if (IS_ENABLED(CONFIG_M3NOTE_DIAGNOSTIC))
+		return;
+
 	if (forge_virt ||
 	    !memblock_is_map_memory(FORGE_HLOG_HDR_PHYS) ||
 	    !memblock_is_map_memory(FORGE_HLOG_PHYS) ||
@@ -1917,6 +1928,9 @@ static bool forge_panic_nb_on;
 
 void __init forge_m681_marker_early_console(void)
 {
+	if (IS_ENABLED(CONFIG_M3NOTE_DIAGNOSTIC))
+		return;
+
 	if (forge_virt)
 		return;
 	if (forge_spm_base2 && !forge_console_on) {
@@ -1938,6 +1952,9 @@ void __init forge_m681_marker_early_console(void)
 void __init forge_m681_marker_late_init(void)
 {
 	void __iomem *nb;
+
+	if (IS_ENABLED(CONFIG_M3NOTE_DIAGNOSTIC))
+		return;
 
 	/* Rung C: under qemu -M virt skip EVERYTHING here — marker ioremaps
 	 * (unreserved guest RAM), forge console, wdt/gpt ioremaps (PCIe MMIO
@@ -2104,6 +2121,9 @@ static int __init forge_timer_verify(void)
 	u32 c1 = 0, c2 = 0, dk, packed;
 	volatile int spin;
 
+	if (IS_ENABLED(CONFIG_M3NOTE_DIAGNOSTIC))
+		return 0;
+
 	if (forge_virt)
 		return 0;	/* Rung C: 0x10008000 = virt PCIe MMIO window */
 	g = ioremap(0x10008000UL, 0x100);
@@ -2235,6 +2255,9 @@ static int forge_log_dump_fn(void *arg)
 
 static int __init forge_log_dump_init(void)
 {
+	if (IS_ENABLED(CONFIG_M3NOTE_DIAGNOSTIC))
+		return 0;
+
 	if (forge_virt)
 		return 0;	/* Rung C: no expdb/mmcblk0p4 on virt — endless filp_open retry */
 	kthread_run(forge_log_dump_fn, NULL, "forge_klog");
@@ -2344,6 +2367,9 @@ static void forge_hb_fn(unsigned long data)
 }
 static int __init forge_hb_init(void)
 {
+	if (IS_ENABLED(CONFIG_M3NOTE_DIAGNOSTIC))
+		return 0;
+
 	init_timer(&forge_hb_timer);
 	forge_hb_timer.function = forge_hb_fn;
 	forge_hb_timer.data = 0;
@@ -2372,6 +2398,9 @@ static int __init forge_rgu_quiesce_init(void)
 {
 	void __iomem *b = toprgu_base ? toprgu_base : forge_wdt_base;
 	u32 rq;
+
+	if (IS_ENABLED(CONFIG_M3NOTE_DIAGNOSTIC))
+		return 0;
 
 	if (forge_virt || !b)
 		return 0;
@@ -2566,6 +2595,9 @@ static int __init forge_mt6351_keywatch_init(void)
 {
 	struct task_struct *t;
 
+	if (IS_ENABLED(CONFIG_M3NOTE_DIAGNOSTIC))
+		return 0;
+
 	if (forge_virt)
 		return 0;	/* no pwrap/PMIC under qemu -M virt */
 	t = kthread_run(forge_mt6351_keywatch_fn, NULL, "forge_keywatch");
@@ -2599,6 +2631,9 @@ static int __init forge_bringup_secondary(void)
 {
 	unsigned int cpu;
 	int ret;
+
+	if (IS_ENABLED(CONFIG_M3NOTE_DIAGNOSTIC))
+		return 0;
 
 	if (!forge_smp_up) {
 		pr_emerg("[FORGE_M681] secondary bring-up skipped (forge_smp_up=0), online=%u\n",
@@ -2688,7 +2723,7 @@ int forge_should_skip_display(void)
 EXPORT_SYMBOL(forge_should_skip_display);
 /*
  * m681 4.9 (branch m681-49-disp): the display stack is back, so the gate is
- * live again -- per BUILD, in NONRST2 (FACT: G1.5a's #113 line read
+ * live again -- per BUILD, in NONRST2 (earlier kernel logs read
  * NONRST2=0xd15bd09e written by the previous 4.9 boot, i.e. the register
  * survived reset -> preloader -> LK -> TWRP 3.10 -> LK).
  *
@@ -2818,9 +2853,13 @@ module_param_cb(disp_gate_rearm, &forge_disp_gate_rearm_ops, NULL, 0200);
 
 static int __init forge_disp_mark_ok(void)
 {
-	void __iomem *w = forge_disp_wdt();
+	void __iomem *w;
 	long left;
 
+	if (IS_ENABLED(CONFIG_M3NOTE_DIAGNOSTIC))
+		return 0;
+
+	w = forge_disp_wdt();
 	if (forge_disp_gate == 0) {
 		/* the display was attempted: DONE only once it has run a while */
 		left = FORGE_DISP_OK_UPTIME_S * HZ - (long)(jiffies - INITIAL_JIFFIES);

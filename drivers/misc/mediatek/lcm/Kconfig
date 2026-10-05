@@ -23,3 +23,24 @@ config MTK_LCM_DEVICE_TREE_SUPPORT
 	  Please also turn on MTK_LCM_DEVICE_TREE_SUPPORT in ProjectConfig.mk.
 	  If not define MTK_LCM_DEVICE_TREE_SUPPORT
 	  there will not connect between display driver and LCM devices.
+
+config M3NOTE_DIAGNOSTIC
+	bool "M3 Note common source diagnostic build"
+	depends on MACH_MT6755 && MTK_LCM
+	default n
+	help
+	  Compile both M681 and L681 panel owners without enabling a guessed
+	  physical revision. Suppress M681-only marker-memory accesses and
+	  refuse panel writes until a physical board producer owns the panel.
+	  This configuration is not a deployment or hardware acceptance claim.
+
+config M3NOTE_FACTORY_PAIR_DIAGNOSTIC
+	bool "M3 Note reviewed factory-pair diagnostic selector"
+	depends on M3NOTE_DIAGNOSTIC && CMDLINE_FROM_BOOTLOADER
+	depends on !CMDLINE_EXTEND && !CMDLINE_FORCE
+	default n
+	help
+	  Accept only individually reviewed complete bootloader serial/PSN
+	  pairs in a private input table, agreeing with exactly one selected DT.
+	  Public builds have an empty table and refuse every physical identity.
+	  This is limited-unit diagnostic admission, not fleet qualification.

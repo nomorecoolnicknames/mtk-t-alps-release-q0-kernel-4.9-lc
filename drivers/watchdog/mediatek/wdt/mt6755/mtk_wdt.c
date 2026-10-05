@@ -413,7 +413,7 @@ void wdt_arch_reset(char mode)
 	 * (machine_restart -> local_irq_disable) so the forge kicker cannot
 	 * re-pet during the spin. rtc_mark_*() already ran in arch_reset() so
 	 * 'reboot recovery' still lands in TWRP. Rollback: delete this block.
-	 * See BRINGUP_STATE_3.18.md 2026-06-28. */
+	 * See the board-specific register comments. */
 	/* m681 v193: v186 (short LENGTH + MODE without AUTO_RESTART) did NOT reset
 	 * (backlight stayed lit). Use the PROVEN dog config that forge_m681_wdt_arm()
 	 * arms at late_init and that historically guillotines the boot: keep the
@@ -432,7 +432,7 @@ void wdt_arch_reset(char mode)
 	 *      kicker survived smp_send_stop (SMP stop is unreliable on graft).
 	 * Arm dog FIRST (insurance), then SMC, then spin. rtc_mark_*() already ran
 	 * in arch_reset() so 'reboot recovery' still lands in TWRP.
-	 * Rollback: restore the v193 block. See BRINGUP_STATE_3.18.md 2026-06-28. */
+	 * Rollback: restore the v193 block. See the board-specific register comments. */
 	/* m681 #150 REBOOT-BOOTLOOP FIX: try PSCI SYSTEM_RESET FIRST, with NO dog
 	 * armed.  The WDT is already DISABLED here (ENABLE was cleared above).  v194
 	 * armed a 2s AUTO_RESTART dog BEFORE the SMC; on a clean PSCI reset that dog

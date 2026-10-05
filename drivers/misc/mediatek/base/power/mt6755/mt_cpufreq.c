@@ -85,16 +85,16 @@
 #undef CONFIG_HYBRID_CPU_DVFS
 
 /* m681 DVFS stage-3: FREQ-ONLY build. VPROC actuation is refused everywhere
- * until H-D2 (CON12-vs-CON13 live setpoint, §11.119) is resolved on silicon;
+ * until the CON12-versus-CON13 live setpoint discrepancy is resolved on silicon;
  * the OPP ladder is clamped to rows legal at the boot voltage, so no row the
  * governor can reach needs a voltage move:
- *   big  <= 1196 MHz, LL <= 689 MHz @ VPROC = 1.000 V (§11.119 FACT: silicon
+ *   big  <= 1196 MHz, LL <= 689 MHz @ VPROC = 1.000 V (observed: silicon
  *   readback CON12=CON13=0x40 -> 1.000 V = the stock FY voltage of exactly
- *   these rows; §11.132 FACT: big held 1196 at this voltage on the device).
+ *   these rows; observed: big held 1196 at this voltage on the device).
  * VSRAM is untouched too (PL-set); its assumed value only feeds bypassed
  * sanity paths. */
 #define FORGE_FREQ_ONLY		1
-#define FORGE_FIXED_VPROC	100000	/* mv*100, §11.119 silicon readback */
+#define FORGE_FIXED_VPROC	100000	/* mv*100, silicon readback */
 #define FORGE_FIXED_VSRAM	110000	/* VPROC + NORMAL_DIFF_VRSAM_VPROC */
 
 /*=============================================================*/
@@ -1868,7 +1868,7 @@ static void set_cur_freq(struct mt_cpu_dvfs *p, unsigned int cur_khz, unsigned i
 	 * stock non-hopping recipe instead: park the cluster mux on MAINPLL,
 	 * write CON1 with CHG, settle, mux back — the same sequence
 	 * adjust_posdiv already uses right above and the same sequence
-	 * mt_dvfs_p0 executed on silicon ×many on 2026-08-14 (§11.132). */
+	 * mt_dvfs_p0 executed during earlier board tests. */
 	forge_dfs_armpll(p, dds);
 
 	/* switch CCI */
@@ -1971,7 +1971,7 @@ static unsigned int get_cur_volt_extbuck(struct mt_cpu_dvfs *p)
 #if FORGE_FREQ_ONLY
 	/* no live readback path exists yet (mt6311_read_byte is a weak 0-stub
 	 * and the pwrap fallback reads MT6353 addresses on an MT6351); the
-	 * rail is pinned by PL and never moved in this build. §11.119 FACT. */
+	 * rail is pinned by PL and never moved in this build.  */
 	FUNC_EXIT(FUNC_LV_LOCAL);
 	return FORGE_FIXED_VPROC;
 #endif
@@ -3391,17 +3391,12 @@ static int _mt_cpufreq_target(struct cpufreq_policy *policy, unsigned int target
 		return -EINVAL;
 #else
 	if (policy->cpu >= num_possible_cpus()
-	    || !id_to_cpu_dvfs(id) || !policy->freq_table
-	    || id_to_cpu_dvfs(id)->dvfs_disable_by_procfs
+	    || cpufreq_frequency_table_target(policy, id_to_cpu_dvfs(id)->freq_tbl_for_cpufreq,
+					      target_freq, relation, &new_opp_idx)
+	    || (id_to_cpu_dvfs(id) && id_to_cpu_dvfs(id)->dvfs_disable_by_procfs)
 		/* || (id_to_cpu_dvfs(id) && id_to_cpu_dvfs(id)->dvfs_disable_by_suspend) */
 	    )
 		return -EINVAL;
-	/* Linux 4.9 uses policy->freq_table and returns the selected index. */
-	ret = cpufreq_frequency_table_target(policy, target_freq, relation);
-	if (ret < 0)
-		return ret;
-	new_opp_idx = ret;
-	ret = 0;
 #endif
 
 #ifdef CONFIG_CPU_DVFS_AEE_RR_REC
@@ -4598,38 +4593,46 @@ static int _create_procfs(void)
 }
 #endif
 #ifdef CONFIG_OF
-static int mt_cpufreq_map_resource(const char *compatible, unsigned long *base)
+static int mt_cpufreq_dts_map(void)
 {
 	struct device_node *node;
 
-	/* A previous, unsuccessful arm attempt may have mapped this resource. */
-	if (*base)
-		return 0;
-	node = of_find_compatible_node(NULL, NULL, compatible);
+	/* topckgen */
+	node = of_find_compatible_node(NULL, NULL, TOPCKGEN_NODE);
 	if (!node) {
-		cpufreq_err("cannot find %s\n", compatible);
-		return -ENODEV;
+		cpufreq_info("error: cannot find node " TOPCKGEN_NODE);
+		BUG();
 	}
-	*base = (unsigned long)of_iomap(node, 0);
-	of_node_put(node);
-	if (!*base) {
-		cpufreq_err("cannot map %s\n", compatible);
-		return -ENOMEM;
+	topckgen_base = (unsigned long)of_iomap(node, 0);
+	if (!topckgen_base) {
+		cpufreq_info("error: cannot iomap " TOPCKGEN_NODE);
+		BUG();
+	}
+
+	/* infracfg_ao */
+	node = of_find_compatible_node(NULL, NULL, INFRACFG_AO_NODE);
+	if (!node) {
+		cpufreq_info("error: cannot find node " INFRACFG_AO_NODE);
+		BUG();
+	}
+	infracfg_ao_base = (unsigned long)of_iomap(node, 0);
+	if (!infracfg_ao_base) {
+		cpufreq_info("error: cannot iomap " INFRACFG_AO_NODE);
+		BUG();
+	}
+
+	/* apmixed */
+	node = of_find_compatible_node(NULL, NULL, APMIXED_NODE);
+	if (!node) {
+		cpufreq_info("error: cannot find node " APMIXED_NODE);
+		BUG();
+	}
+	apmixed_base = (unsigned long)of_iomap(node, 0);
+	if (!apmixed_base) {
+		cpufreq_info("error: cannot iomap " APMIXED_NODE);
+		BUG();
 	}
 	return 0;
-}
-
-static int mt_cpufreq_dts_map(void)
-{
-	int ret;
-
-	ret = mt_cpufreq_map_resource(TOPCKGEN_NODE, &topckgen_base);
-	if (ret)
-		return ret;
-	ret = mt_cpufreq_map_resource(INFRACFG_AO_NODE, &infracfg_ao_base);
-	if (ret)
-		return ret;
-	return mt_cpufreq_map_resource(APMIXED_NODE, &apmixed_base);
 }
 #else
 static int mt_cpufreq_dts_map(void)
@@ -4657,19 +4660,13 @@ static int _mt_cpufreq_pdrv_init_real(void)
 
 	FUNC_ENTER(FUNC_LV_MODULE);
 
-	ret = mt_cpufreq_dts_map();
-	if (ret)
-		return ret;
+	mt_cpufreq_dts_map();
 	debug_vsram = get_cur_vsram(NULL);
 	debug_vproc = get_cur_volt_extbuck(NULL);
 
 	cluster_num = (unsigned int)arch_get_nr_clusters();
-	if (!cluster_num || cluster_num > ARRAY_SIZE(cpu_dvfs))
-		return -EINVAL;
 	for (i = 0; i < cluster_num; i++) {
 		arch_get_cluster_cpus(&cpu_mask, i);
-		if (cpumask_empty(&cpu_mask))
-			return -ENODEV;
 		cpu_dvfs[i].cpu_id = cpumask_first(&cpu_mask);
 		cpufreq_dbg("cluster_id = %d, cluster_cpuid = %d\n",
 	       i, cpu_dvfs[i].cpu_id);
@@ -4684,8 +4681,7 @@ static int _mt_cpufreq_pdrv_init_real(void)
 #ifdef CONFIG_PROC_FS
 
 	/* init proc */
-	ret = _create_procfs();
-	if (ret)
+	if (_create_procfs())
 		goto out;
 
 #endif

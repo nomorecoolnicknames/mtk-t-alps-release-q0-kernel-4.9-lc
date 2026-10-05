@@ -42,12 +42,3 @@ config MTK_LP_OPP
 	  This kernel config can be used to enable MTK LP OPP. When enable
 	  this option, cpudvfs opp will be changed for low power.
 	  If unsure, say N.
-
-config MTK_M681_CLKBUF
-	bool "MT6755 clock buffer provider"
-	depends on MACH_MT6755 && MTK_PMIC_WRAP_HAL
-	default n
-	help
-	  Build the MT6755 RF/PMIC clock provider with checked initialization.
-	  Board clock properties and PMIC access policy must be validated before
-	  enabling this option. Initialization failure leaves controls unavailable.

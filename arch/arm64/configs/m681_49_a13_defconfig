@@ -224,17 +224,3 @@ CONFIG_MTK_SCHED_TRACERS=y
 CONFIG_SECURITY_SELINUX_BOOTPARAM=y
 CONFIG_CRYPTO_TWOFISH=y
 # CONFIG_CRYPTO_HW is not set
-# m681: Power/Home (PMIC, polled) and volume (keypad matrix) keys
-CONFIG_KEYBOARD_MTK=y
-CONFIG_KPD_PWRKEY_USE_PMIC=y
-# m681 4.9 connsys (MT6755 CONSYS: WMT/STP over BTIF + wlan gen2), the
-# 4.4 m681 daily set (m681_defconfig:304-326): BT + Wi-Fi, no GPS/FM yet,
-# no LTE IDC (it selects MTK_CONN_MD). Power-on stays gated by
-# mtk_wcn_consys_hw.forge_conn_pwron_stage (default 0 = consys untouched).
-CONFIG_MTK_BTIF=y
-CONFIG_MTK_COMBO=y
-CONFIG_MTK_COMBO_CHIP_CONSYS_6755=y
-CONFIG_MTK_COMBO_BT=y
-CONFIG_MTK_COMBO_WIFI=y
-# CONFIG_MTK_CONN_LTE_IDC_SUPPORT is not set
-CONFIG_MTK_DHCPV6C_WIFI=y

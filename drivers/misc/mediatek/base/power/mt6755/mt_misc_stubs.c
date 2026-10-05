@@ -321,10 +321,8 @@ unsigned int mmdvfs_get_stable_isp_clk(void) { return 0; }
  * or it will duplicate-symbol at link. */
 /* clk_buf_init: real one lives in mt_clkbuf_ctl.o (deferred — needs the
  * spm_v2 reg set; re-enable at the connectivity phase like the 4.4 lane did). */
-#ifndef CONFIG_MTK_M681_CLKBUF
 bool clk_buf_init(void) { return false; }
 EXPORT_SYMBOL(clk_buf_init);
-#endif
 /* pwrap_read: real one is pmic_wrap pwrap_hal_v1.o (Phase 2 pwrap carry).
  * mt_vcorefs_stub.o reads PMIC_VCORE_ADDR through it.
  * m681-49-disp: built (read-only WACS2) with CONFIG_MTK_PMIC_WRAP_HAL. */
@@ -347,10 +345,8 @@ EXPORT_SYMBOL(pwrap_read);
  *  - usb_cable_connected: charger (deferred to the power phase); the
  *    mu3d UDC (CONFIG_USB_MU3D_DRV, mtk_usb.c) provides the real one
  */
-#ifndef CONFIG_MTK_M681_CLKBUF
 void clk_buf_write_afcdac(void) {}
 EXPORT_SYMBOL(clk_buf_write_afcdac);
-#endif
 unsigned int mt_ppm_userlimit_cpu_freq(unsigned int cluster_num, void *data) { return 0; }
 EXPORT_SYMBOL(mt_ppm_userlimit_cpu_freq);
 int update_userlimit_cpu_core(int kicker, int num, void *data) { return 0; }

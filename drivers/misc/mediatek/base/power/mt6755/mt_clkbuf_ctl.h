@@ -92,7 +92,6 @@ void clk_buf_save_afc_val(unsigned int afcdac);
 void clk_buf_write_afcdac(void);
 void clk_buf_control_bblpm(bool on);
 bool clk_buf_init(void);
-bool clk_buf_is_ready(void);
 bool is_clk_buf_under_flightmode(void);
 bool is_clk_buf_from_pmic(void);
 

@@ -69,7 +69,6 @@
 /* topckgen / apmixedsys offsets, used only by the clock-status dump */
 #define MSDC_CLK_CFG_3_OFFSET   (0x070)
 #define MSDCPLL_CON0_OFFSET     (0x250)
-#define MSDCPLL_CON1_OFFSET     (0x254)
 #define MSDCPLL_PWR_CON0_OFFSET (0x25c)
 
 /*

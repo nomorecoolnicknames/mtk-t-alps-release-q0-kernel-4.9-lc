@@ -33,6 +33,8 @@
 #include "pwrap_hal.h"
 #include <linux/moduleparam.h>
 
+extern bool forge_pmic_adc_consume(u32 adr, u32 value);
+
 /*
  * m681 4.9 (branch m681-49-disp): READ-ONLY WACS2 on the LK-initialised
  * wrapper. Contract of the m681 4.4 lane: LK brings pwrap up (INIT_DONE2) and
@@ -62,10 +64,6 @@ static unsigned int forge_pwrap_read_fail;
 module_param_named(read_fail, forge_pwrap_read_fail, uint, 0444);
 static int forge_pwrap_state;	/* 0 not probed, 1 wired, -1 gates closed, -2 no INIT_DONE2 */
 module_param_named(state, forge_pwrap_state, int, 0444);
-int forge_rtc_recovery_flag(int set);	/* below, next to pwrap_hal_init() */
-extern void forge_m681_mark_aux(u8 stage, u32 aux);
-/* mt_pmic_stub.c: the allowlisted write in flight, or 0 */
-extern u32 forge_pmic_table_write_adr;
 
 #define PMIC_WRAP_DEVICE "pmic_wrap"
 
@@ -598,19 +596,11 @@ static s32 pwrap_wacs2_hal(u32 write, u32 adr, u32 wdata, u32 *rdata)
 	spin_lock_irqsave(&wrp_lock, flags);
 
 	/* m681 4.9: read-only WACS2 - drop the write, report the first one.
-	 * The exceptions: the touch rail enable, VLDO28 CON3/CON4
-	 * (0x0AA2/0x0AA4), where mt_pmic_stub.c only passes a bit-1
-	 * read-modify-write (touch_rail=0 drops it again); and RTC_PDN1,
-	 * RTC_PROT and RTC_WRTGR, written only by forge_rtc_recovery_flag()
-	 * below; and the MT6351 key interrupts - INT_CON0_SET (0x02C4) and the
-	 * W1C INT_STATUS0 (0x02E0), bits 0-3 (PWRKEY, HOMEKEY, PWRKEY_R,
-	 * HOMEKEY_R) and nothing else, for the kpd EINT path; and the one
-	 * write the allowlist in mt_pmic_stub.c has in flight
-	 * (forge_pmic_table_write_adr), already checked bit by bit there. */
+	 * The one exception is the touch rail enable, VLDO28 CON3/CON4
+	 * (0x0AA2/0x0AA4); mt_pmic_stub.c only passes a bit-1
+	 * read-modify-write there (touch_rail=0 drops it again). */
 	if (write && adr != 0x0AA2 && adr != 0x0AA4 &&
-	    adr != 0x402c && adr != 0x4036 && adr != 0x403c &&
-	    !((adr == 0x02C4 || adr == 0x02E0) && !(wdata & ~0xF)) &&
-	    !(adr && adr == READ_ONCE(forge_pmic_table_write_adr))) {
+	    !forge_pmic_adc_consume(adr, wdata)) {
 		forge_pwrap_blocked_writes++;
 		forge_pwrap_last_blocked = (adr << 16) | wdata;
 		spin_unlock_irqrestore(&wrp_lock, flags);
@@ -1858,92 +1848,8 @@ static int __init pwrap_hal_init(void)
 		forge_m681_mark_aux(0xA1, 0x04);	/* WACS2 wired, read-only */
 		pr_emerg("M681_PWRAP: 4.9 pwrap_hal_init: INIT_DONE2 set by LK, CG0 STA=0x%08x, WACS2 wired READ-ONLY (no pwrap_init, writes dropped)\n",
 			 sta0);
-		forge_rtc_recovery_flag(1);	/* early recovery marker */
 	}
 	return ret;
 }
-
-/*
- * m681 4.9: an early "boot into recovery" marker in the PMIC RTC, so that a
- * kernel dying before the eMMC exists (and with it the BCB) still lands in
- * TWRP. FACT, m681 LK (lk/lk2, base 0x46000000): boot_mode_select @0x460026e8
- * calls Check_RTC_Recovery_Mode @0x4600c31c - (RTC_PDN1 & 0x30) == 0x10 -
- * and then sets g_boot_mode = RECOVERY_BOOT; platform init consumes the bit
- * only afterwards, in rtc_boot_check() @0x46001ca2. The LK's own setter
- * (@0x4600c380) writes it like this, and so do we: RTC_PROT 0x586a,
- * trigger, RTC_PROT 0x9136, trigger, RTC_PDN1 |= 0x10, trigger, where a
- * trigger is RTC_WRTGR = 1 and a wait for RTC_BBPU CBUSY (bit 6) to clear.
- * These are the only RTC registers the WACS2 gate above lets through.
- * Armed once WACS2 is wired (postcore); the bootguard clears it once the BCB
- * is armed. rtc_guard=0 leaves the RTC alone.
- */
-#define FORGE_RTC_BBPU		0x4000
-#define FORGE_RTC_PDN1		0x402c
-#define FORGE_RTC_PROT		0x4036
-#define FORGE_RTC_WRTGR		0x403c
-#define FORGE_RTC_PDN1_RECOVERY	0x10
-
-static int forge_rtc_guard = 1;
-module_param_named(rtc_guard, forge_rtc_guard, int, 0644);
-
-static s32 forge_rtc_trigger(void)
-{
-	u32 bbpu = 0;
-	s32 ret = pwrap_wacs2_hal(1, FORGE_RTC_WRTGR, 1, NULL);
-	int i;
-
-	for (i = 0; !ret && i < 1000; i++) {
-		ret = pwrap_wacs2_hal(0, FORGE_RTC_BBPU, 0, &bbpu);
-		if (!ret && !(bbpu & 0x40))
-			return 0;
-		udelay(10);
-	}
-	return ret ? ret : -ETIMEDOUT;
-}
-
-int forge_rtc_recovery_flag(int set)
-{
-	u32 pdn1 = 0, now = 0;
-	s32 ret;
-
-	if (forge_pwrap_state != 1 || !forge_rtc_guard)
-		return -ENODEV;
-	ret = pwrap_wacs2_hal(1, FORGE_RTC_PROT, 0x586a, NULL);
-	if (!ret)
-		ret = forge_rtc_trigger();
-	if (!ret)
-		ret = pwrap_wacs2_hal(1, FORGE_RTC_PROT, 0x9136, NULL);
-	if (!ret)
-		ret = forge_rtc_trigger();
-	if (!ret)
-		ret = pwrap_wacs2_hal(0, FORGE_RTC_PDN1, 0, &pdn1);
-	if (!ret)
-		ret = pwrap_wacs2_hal(1, FORGE_RTC_PDN1,
-				      set ? pdn1 | FORGE_RTC_PDN1_RECOVERY :
-					    pdn1 & ~FORGE_RTC_PDN1_RECOVERY, NULL);
-	if (!ret)
-		ret = forge_rtc_trigger();
-	if (!ret)
-		ret = pwrap_wacs2_hal(0, FORGE_RTC_PDN1, 0, &now);
-	forge_m681_mark_aux(0xA2, (set ? 0x10000 : 0) | (now & 0xffff));
-	pr_emerg("[FORGE_M681] RTC recovery flag %s: PDN1 0x%04x -> 0x%04x (%d)%s\n",
-		 set ? "set" : "cleared", pdn1, now, ret,
-		 set && (now & 0x30) != 0x10 ? " - LK will NOT see it (bit 5 set)" : "");
-	return ret;
-}
-EXPORT_SYMBOL(forge_rtc_recovery_flag);
-
-/* Hardware check of the LK path: write 1 to set the flag, 0 to clear it. */
-static int forge_rtc_flag_test_set(const char *val, const struct kernel_param *kp)
-{
-	int v, ret = kstrtoint(val, 0, &v);
-
-	return ret ? ret : forge_rtc_recovery_flag(v != 0);
-}
-static const struct kernel_param_ops forge_rtc_flag_test_ops = {
-	.set = forge_rtc_flag_test_set,
-};
-module_param_cb(rtc_flag_test, &forge_rtc_flag_test_ops, NULL, 0200);
-
 postcore_initcall(pwrap_hal_init);
 

@@ -238,17 +238,6 @@ config MTK_SENSORS_1_0
 	  And we support loadble drivers
 
 source "drivers/misc/mediatek/sensors-1.0/Kconfig"
-source "drivers/misc/mediatek/m681-sensors/Kconfig"
-source "drivers/misc/mediatek/hall/Kconfig"
-source "drivers/misc/mediatek/vibrator/mt6755/Kconfig"
-
-config MEIZU_SYSFS_CLASS
-	bool "Meizu shared sensor sysfs class"
-	depends on MACH_MT6755
-	default n
-	help
-	  Provide the shared meizu class for board-specific sensor interfaces.
-	  Consumers must reject a failed class creation.
 
 endmenu  # Sensors
 

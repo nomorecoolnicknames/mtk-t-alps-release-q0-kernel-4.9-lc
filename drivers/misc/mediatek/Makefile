@@ -79,10 +79,6 @@ obj-$(CONFIG_MTK_PMIC_NEW_ARCH)	+= pmic/
 obj-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp/
 obj-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += audio_ipi/
 obj-$(CONFIG_MTK_SENSORS_1_0) += sensors-1.0/
-obj-$(CONFIG_MTK_M681_LEGACY_SENSORS) += m681-sensors/
-obj-$(CONFIG_CUSTOM_KERNEL_HALL) += hall/
-obj-$(CONFIG_MTK_M681_VIBRATOR) += vibrator/mt6755/
-obj-$(CONFIG_MEIZU_SYSFS_CLASS) += meizu_class.o
 obj-$(CONFIG_MTK_DEVINFO_DRIVER) += devinfo/
 obj-$(CONFIG_MTK_DEVINFO_DRIVER_V2) += devinfo/
 obj-$(CONFIG_MTK_GPU_SUPPORT) += gpu/
@@ -99,7 +95,7 @@ endif
 obj-$(CONFIG_MTK_CCCI_EXT)  +=  dual_ccci/
 obj-$(CONFIG_MTK_CCCI_DEVICES)	+=  ccci_util/
 obj-$(CONFIG_MTK_NET_CCMNI) +=  ccmni/
-ifneq ($(filter y,$(CONFIG_MACH_MT6735M) $(CONFIG_MACH_MT6755)),)
+ifeq ($(CONFIG_MACH_MT6735M),y)
 obj-$(CONFIG_MTK_ECCCI_DRIVER) +=  eccci1/
 else
 obj-$(CONFIG_MTK_ECCCI_DRIVER) +=  eccci/

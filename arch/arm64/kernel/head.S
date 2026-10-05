@@ -87,6 +87,7 @@
 	.endm
 
 	.macro	forge_mark, ms
+#ifndef CONFIG_M3NOTE_DIAGNOSTIC
 	movz	x14, #0x7f00, lsl #16		// candidate D: 0x7f000000
 	forge_stamp \ms
 #ifndef CONFIG_MACH_MT6755
@@ -96,6 +97,7 @@
 	forge_stamp \ms
 #endif
 	dsb	sy
+#endif
 	.endm
 
 #if (TEXT_OFFSET & 0xfff) != 0

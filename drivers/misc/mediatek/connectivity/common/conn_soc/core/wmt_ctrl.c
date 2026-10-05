@@ -367,14 +367,6 @@ INT32 wmt_ctrl_hw_pwr_on(P_WMT_CTRL_DATA pWmtCtrlData)
 	} else {
 		WMT_DBG_FUNC("off->on\n");
 		iret = wmt_plat_pwr_ctrl(FUNC_ON);
-		/* m681: the bit is set before the attempt; a failed power-on
-		 * (e.g. the forge_conn_pwron_stage gate) must clear it, or the
-		 * next attempt reads "already on", reports success, and STP
-		 * init runs on unpowered consys (4.4 m681 aaf35b64). */
-		if (iret) {
-			WMT_WARN_FUNC("hw_pwr_on failed (%d), clearing WMT_STAT_PWR\n", iret);
-			osal_clear_bit(WMT_STAT_PWR, &pDev->state);
-		}
 	}
 
 	return iret;

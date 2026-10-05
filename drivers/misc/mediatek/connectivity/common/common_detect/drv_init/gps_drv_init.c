@@ -28,14 +28,7 @@ int do_gps_drv_init(int chip_id)
 	i_ret = mtk_wcn_stpgps_drv_init();
 	WMT_DETECT_INFO_FUNC("finish gps driver init, i_ret:%d\n", i_ret);
 #else
-	/* m681: "not built" is not a failure. do_connectivity_driver_init()
-	 * sums the sub-driver results, so the -1 above made
-	 * COMBO_IOCTL_DO_MODULE_INIT fail with BT and WLAN both green, and
-	 * the combo loader then skips configure_soc_sdio_hif() - WMT is left
-	 * with no HIF and every power-on fails (4.4 m681 982135b3, device
-	 * evidence 2026-07-27). */
 	WMT_DETECT_INFO_FUNC("CONFIG_MTK_COMBO_GPS is not defined\n");
-	i_ret = 0;
 #endif
 	return i_ret;
 

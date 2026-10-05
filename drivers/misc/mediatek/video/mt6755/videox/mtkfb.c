@@ -3062,7 +3062,7 @@ static int mtkfb_probe(struct platform_device *pdev)
 	 * init+path start+video trigger) leaves the DSI DIGITAL controller regs
 	 * (START/MODE/PSCTRL/VM) all 0x0. Root cause is deeper: the DSI digital
 	 * block is not clocked/powered for register access (MIPITX PHY reads fine,
-	 * reg bases MATCH the working stocktruth oracle). See BRINGUP_STATE_3.18.md
+	 * reg bases MATCH the working stocktruth oracle). See the board-specific register comments
 	 * 2026-06-28. Keep stock takeover handoff until the DSI digital clock/power
 	 * sequence is fixed. */
 	primary_display_init(mtkfb_find_lcm_driver(), lcd_fps, is_lcm_inited);

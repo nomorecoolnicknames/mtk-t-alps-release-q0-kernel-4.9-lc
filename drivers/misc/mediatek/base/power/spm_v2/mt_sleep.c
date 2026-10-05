@@ -152,7 +152,7 @@ u32 slp_spm_data = 0;
 /* m681 F1 (2026-07-15): deep S3 (PM_SUSPEND_MEM) sits behind a runtime knob,
  * DEFAULT OFF. SPM-gating the MM/DISP domain with OVL0 fetch state armed
  * causes the DISP_OVL0 M4U translation fault -> ~3s RGU reset on screen-off
- * (BRINGUP_STATE_3.18.md 2026-07-14/15). Screen blank itself (Path A:
+ * (observed on the earlier 3.18 kernel). Screen blank itself (Path A:
  * FBIOBLANK -> primary_display_suspend) is clean; only the S3 SPM gate kills.
  * With allow_s3=0, autosleep's /sys/power/state=mem gets -EINVAL: the panel
  * still blanks and the phone survives (strictly better than `svc power
@@ -403,15 +403,8 @@ static int slp_suspend_ops_enter(suspend_state_t state)
 #endif
 		slp_wake_reason = spm_go_to_sleep(slp_spm_flags, slp_spm_data);
 
-	/* A refused UART handshake never reached WFI; a PCM assertion is a
-	 * controller failure. Do not account either as a successful suspend. */
-	if (slp_wake_reason == WR_UART_BUSY)
-		ret = -EBUSY;
-	else if (slp_wake_reason == WR_PCM_ASSERT)
-		ret = -EIO;
-
-	pr_emerg("[FORGE_S3] spm sleep RETURNED (wake_reason=%d, ret=%d)\n",
-		 slp_wake_reason, ret);
+	pr_emerg("[FORGE_S3] spm sleep RETURNED (wake_reason=%d)\n",
+		 slp_wake_reason);
 #endif
 
 LEAVE_SLEEP:

@@ -44,11 +44,7 @@ subdir-ccflags-y += -Werror -I$(srctree)/drivers/misc/mediatek/dramc/$(MTK_PLATF
 subdir-ccflags-y += -Werror -I$(srctree)/drivers/misc/mediatek/accdet/$(MTK_PLATFORM)
 
 # Common include path
-ifeq ($(MTK_PLATFORM),mt6755)
-subdir-ccflags-y += -Werror -I$(src)/mt6755/common
-else
 subdir-ccflags-y += -Werror -I$(src)/common_int
-endif
 
 # PMIC include path
 ifneq  ($(MTK_CODEC),)
@@ -65,9 +61,7 @@ ifneq  ($(MTK_CODEC),)
 obj-y += codec/$(MTK_CODEC)/
 endif
 obj-y += vendor/
-ifneq ($(MTK_PLATFORM),mt6755)
 obj-y += common_int/
-endif
 
 ifeq ($(MTK_PLATFORM),mt6758)
   obj-y += mt6758_int/
@@ -79,9 +73,7 @@ else
   subdir-ccflags-y += -Werror -I$(src)/$(MTK_PLATFORM)
 endif
 
-ifneq ($(MTK_PLATFORM),mt6755)
 obj-$(CONFIG_SND_SOC_MTK_BTCVSD) += common_int/
-endif
 
 # Old architecture
 else

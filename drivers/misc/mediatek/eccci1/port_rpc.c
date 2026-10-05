@@ -32,11 +32,7 @@
 #endif
 
 #ifdef FEATURE_RF_CLK_BUF
-#ifdef CONFIG_MACH_MT6755
-#include <mt_clkbuf_ctl.h>
-#else
 #include <mtk_clkbuf_ctl.h>
-#endif
 #endif
 
 #include "ccci_core.h"

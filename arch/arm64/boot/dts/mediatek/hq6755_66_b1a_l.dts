@@ -1,0 +1,103 @@
+
+/dts-v1/;
+
+#include "mt6755.dtsi"
+
+
+/ {
+	touch_panel: touch_panel {
+	};
+	kpd_slide: kpd_slide {
+	};
+};
+
+#include <hq6755_66_b1a_l/cust.dtsi>
+
+/ {
+	model = "Meizu M3 Note Intl L681";
+	compatible = "meizu,l681", "mediatek,mt6755";
+
+	memory@40000000 {
+		device_type = "memory";
+		reg = <0 0x40000000 0 0x3e800000>;
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		reserve-memory-ccci_md3_ccif {
+			compatible = "mediatek,reserve-memory-ccci_md3_ccif";
+			no-map;
+			size = <0 0x00c00000>;
+			alignment = <0 0x2000000>;
+			alloc-ranges = <0 0x40000000 0 0xc0000000>;
+		};
+	};
+
+	
+	chosen {
+		bootargs = "console=tty0 console=ttyMT0,921600n1 root=/dev/ram initrd=0x44000000,0x4b434e loglevel=4 printk.disable_uart=1 maxcpus=1 clk_ignore_unused";
+
+		
+		
+		atag,videolfb-fb_base_h = <0x0>;
+		atag,videolfb-fb_base_l = <0x7e800000>;
+		atag,videolfb-islcmfound = <1>;
+		atag,videolfb-islcm_inited = <1>;
+		atag,videolfb-fps= <5716>;
+		atag,videolfb-vramSize= <0x01be0000>;
+		atag,videolfb-lcmname= "hx8399_fhd_dsi_vdo_txd_auo_al1518";
+	};
+	led@0 {
+		compatible = "mediatek,red";
+		led_mode = <0>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	led@1 {
+		compatible = "mediatek,green";
+		led_mode = <0>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	led@2 {
+		compatible = "mediatek,blue";
+		led_mode = <0>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	led@3 {
+		compatible = "mediatek,jogball-backlight";
+		led_mode = <0>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	led@4 {
+		compatible = "mediatek,keyboard-backlight";
+		led_mode = <0>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	led@5 {
+		compatible = "mediatek,button-backlight";
+		led_mode = <0>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	led@6 {
+		compatible = "mediatek,lcd-backlight";
+		
+		led_mode = <5>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	vibrator0:vibrator@0 {
+		compatible = "mediatek,vibrator";
+		vib_timer = <25>;
+		vib_limit = <9>;
+		vib_vol= <5>;
+	};
+
+};

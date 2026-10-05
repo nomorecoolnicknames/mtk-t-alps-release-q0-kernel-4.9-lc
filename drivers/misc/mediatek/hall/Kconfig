@@ -1,7 +1,0 @@
-config CUSTOM_KERNEL_HALL
-	tristate "MediaTek BU52013HFV hall sensor"
-	depends on OF && GPIOLIB && INPUT
-	default n
-	help
-	  Preserve the vendor hall input ABI using the board-provided GPIO,
-	  debounce, pinctrl and interrupt resources. No GPIO is guessed.

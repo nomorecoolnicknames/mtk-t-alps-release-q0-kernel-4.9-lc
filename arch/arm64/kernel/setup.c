@@ -274,6 +274,9 @@ static void __init forge_check_pages(void)
 {
 	int i;
 
+	if (IS_ENABLED(CONFIG_M3NOTE_DIAGNOSTIC))
+		return;
+
 	for (i = 0; i < FORGE_NR_PAGES; i++)
 		if (memblock_is_map_memory(forge_pages[i]))
 			forge_page_mapped |= 1U << i;
@@ -282,6 +285,9 @@ static void __init forge_check_pages(void)
 static void __init forge_cmark(int ms)
 {
 	int i;
+
+	if (IS_ENABLED(CONFIG_M3NOTE_DIAGNOSTIC))
+		return;
 
 	for (i = 0; i < FORGE_NR_PAGES; i++) {
 		const phys_addr_t base = forge_pages[i];

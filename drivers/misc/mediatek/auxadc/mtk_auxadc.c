@@ -57,6 +57,7 @@
 #include <mt-plat/sync_write.h>
 #include <mt-plat/mtk_devinfo.h>
 
+#include <linux/m3note_board.h>
 #include "mtk_auxadc.h"
 #include "mtk_auxadc_hw.h"
 
@@ -1740,6 +1741,10 @@ static int mt_auxadc_probe(struct platform_device *dev)
 	int of_value = 0;
 	struct device_node *node;
 
+	if (IS_ENABLED(CONFIG_M3NOTE_DIAGNOSTIC) &&
+	    m3note_board_id() == M3NOTE_BOARD_UNKNOWN)
+		return -ENODEV;
+
 	pr_err(TAG "******** MT AUXADC driver probe!! ********\n");
 
 	/* Integrate with NVRAM */
@@ -1970,6 +1975,7 @@ static int mt_auxadc_resume(struct platform_device *dev)
 }
 
 static const struct of_device_id mt_auxadc_of_match[] = {
+	{.compatible = "mediatek,mt6755-auxadc",},
 	{.compatible = "mediatek,mt6757-auxadc",},
 	{.compatible = "mediatek,mt6735-auxadc",},
 	{.compatible = "mediatek,mt8167-auxadc",},

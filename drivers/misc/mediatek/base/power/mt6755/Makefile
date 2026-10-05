@@ -51,7 +51,7 @@ obj-y += mt_pm_init.o
 # are removed in the same change (they were EXPORT_SYMBOL, not __weak).
 # 49-skeleton defer: needs spm_v2/mt_spm_reg_mt6755.h (SPM_MDBSI_CON et al);
 # re-enable at the connectivity phase with the spm_v2 include set.
-obj-$(CONFIG_MTK_M681_CLKBUF) += mt_clkbuf_ctl.o
+#obj-y += mt_clkbuf_ctl.o
 # obj-y += mt_dcm.o  # m681: defer dynamic-clock-mgmt (needs dramc)
 #obj-y += mt_spm.o
 #obj-y += mt_spm_fs.o
@@ -92,7 +92,6 @@ obj-$(CONFIG_MTK_MT6750TT) += mt_eem_turbo.o
 # obj-y += mt_vcorefs_governor.o  # m681: defer DVFS/EEM/PTP for boot
 # obj-y += mt_vcorefs_manager.o  # m681: defer DVFS/EEM/PTP for boot
 obj-y += mt_vcorefs_stub.o  # m681: no-op is_vcorefs_can_work/request_dvfs_opp while vcorefs deferred (msdc autok_dvfs needs them)
-obj-y += forge_chg_observe.o  # m681 4.9: read-only SM5414/PMIC charger observer (no charger driver yet)
 obj-y += mt_pmic_stub.o  # m681: no-op PMIC API while pmic/ driver deferred (CONFIG_MTK_PMIC_NEW_ARCH off); keeps SPM/RTC/etc linkable
 # m681-49-disp: MT6351 pmu_flags_table for the read-only pmic_get_register_value()
 ifneq ($(CONFIG_MTK_PMIC_NEW_ARCH),y)
@@ -119,3 +118,5 @@ endif
 # obj-y += mt_hotplug_strategy_cpu.o  # m681: defer hotplug governor for boot
 # obj-y += mt_hotplug_strategy_api.o  # m681: defer hotplug governor for boot
 # obj-y += mt_hotplug_strategy_algo.o  # m681: defer hotplug governor for boot
+
+obj-$(CONFIG_MTK_PMIC_WRAP_HAL) += forge_chg_observe.o

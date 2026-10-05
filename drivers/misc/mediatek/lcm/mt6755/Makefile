@@ -33,3 +33,7 @@ DEFINES += $(foreach LCM,$(LCM_DEFINES),$(LCM))
 DEFINES += MTK_LCM_PHYSICAL_ROTATION=\"$(MTK_LCM_PHYSICAL_ROTATION)\"
 ccflags-$(CONFIG_MTK_LCM) += $(addprefix -D, $(DEFINES))
 ccflags-$(CONFIG_MTK_LCM_DEVICE_TREE_SUPPORT) += -DMTK_LCM_DEVICE_TREE_SUPPORT
+
+ifneq ($(filter ili9885_fhd_dsi_vdo_txd1 hx8399_fhd_dsi_vdo_txd_auo_al1518,$(LCM_LISTS)),)
+obj-$(CONFIG_MTK_LCM) += tps65132.o m3note_board.o
+endif

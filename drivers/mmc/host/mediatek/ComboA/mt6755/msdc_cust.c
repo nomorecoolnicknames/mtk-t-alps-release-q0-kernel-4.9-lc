@@ -21,7 +21,6 @@
 
 #define pr_fmt(fmt) "["KBUILD_MODNAME"]" fmt
 
-#include <mt-plat/mtk_chip.h>
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/platform_device.h>
@@ -392,22 +391,11 @@ void msdc_dump_clock_sts(char **buff, unsigned long *size,
 			" CLK_CFG_3[0x%p]=0x%x should: bit[19:16]=msdc50_0 src, bit[23]=0\n",
 			topckgen_base + MSDC_CLK_CFG_3_OFFSET,
 			MSDC_READ32(topckgen_base + MSDC_CLK_CFG_3_OFFSET));
-	if (apmixed_base) {
-		/* m681 4.9: CON1 too - PCW [20:0] (14 fractional bits) and
-		 * POSDIV [26:24] give the PLL rate, 26 MHz * PCW / 2^14 >> POSDIV,
-		 * the number HS200 tuning needs (CCF says 283.5 MHz, the table
-		 * assumes 400) */
-		u32 con1 = MSDC_READ32(apmixed_base + MSDCPLL_CON1_OFFSET);
-		u64 khz = (26000ULL * (con1 & 0x1fffff)) >> 14;
-
+	if (apmixed_base)
 		SPREAD_PRINTF(buff, size, m,
 			" MSDCPLL_CON0=0x%x PWR_CON0=0x%x should: bit[0]=1\n",
 			MSDC_READ32(apmixed_base + MSDCPLL_CON0_OFFSET),
 			MSDC_READ32(apmixed_base + MSDCPLL_PWR_CON0_OFFSET));
-		SPREAD_PRINTF(buff, size, m,
-			" MSDCPLL_CON1=0x%x -> %llu kHz\n",
-			con1, khz >> ((con1 >> 24) & 0x7));
-	}
 }
 
 void msdc_clk_enable_and_stable(struct msdc_host *host)
@@ -762,7 +750,7 @@ int msdc_of_parse(struct platform_device *pdev, struct mmc_host *mmc)
 	/*
 	 * m681 4.9: no HS400 and, since the first hardware run, no HS200
 	 * either - the eMMC runs HS (52 MHz SDR, fixed sampling, no tuning).
-	 * FACT (a13d, flash-m681 captures/m681-flash-20260928/a13d-run1):
+	 * Observed during an earlier HS200 boot:
 	 * "mmc0: new HS200 MMC card" at 0.668 s, then repeated "response CRC
 	 * error sending r/w cmd", "[AUTOK] ... LATCH_CK ... fail" and
 	 * "msdc0 tune error"; no partition table was read and first-stage init
@@ -872,15 +860,6 @@ int msdc_dt_init(struct platform_device *pdev, struct mmc_host *mmc)
 	if (apmixed_base == NULL) {
 		np = of_find_compatible_node(NULL, NULL, "mediatek,apmixed");
 		apmixed_base = of_iomap(np, 0);
-	}
-
-	/* m681 4.9: the measured MSDC0 source, once, for the HS200 return;
-	 * and the chip revision - the 4.4 AUTOK picks its HS200 latch and
-	 * FIFO settings by hw_ver 0xcb00 */
-	if (id == 0) {
-		msdc_dump_clock_sts(NULL, NULL, NULL, NULL);
-		pr_notice("[msdc0] chip hw_ver 0x%x sw_ver 0x%x\n",
-			  mt_get_chip_hw_ver(), mt_get_chip_sw_ver());
 	}
 #endif
 	return 0;

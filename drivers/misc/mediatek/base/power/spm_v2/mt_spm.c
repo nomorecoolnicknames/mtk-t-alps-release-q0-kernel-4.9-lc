@@ -1007,22 +1007,6 @@ int spm_load_pcm_firmware(struct platform_device *pdev)
 			pr_err("Failed to load %s, err = %d.\n", dyna_load_pcm_path[i], err);
 			continue;
 		}
-		/* m681: the code size is a word read from the file, and the
-		 * code goes into a PCM_FIRMWARE_SIZE slot of the reserved region
-		 * (spm-reserve-memory) - refuse a blob that would overrun either
-		 * the slot or the file instead of copying it. The m681 vendor
-		 * blobs need at most 7640 of the 8192 bytes. */
-		if (fw->size >= 2)
-			memcpy(&firmware_size, fw->data, 2);
-		if (fw->size < 2 || firmware_size * 4 > PCM_FIRMWARE_SIZE ||
-		    fw->size < 2 + firmware_size * 4 + sizeof(struct pcm_desc) -
-				offsetof(struct pcm_desc, size)) {
-			pr_err("%s: bad size (file %zu, code %u words, slot %u), not loaded\n",
-			       dyna_load_pcm_path[i], fw->size, firmware_size,
-			       PCM_FIRMWARE_SIZE);
-			release_firmware(fw);
-			continue;
-		}
 		spm_fw[i] = fw;
 
 		/* Do whatever it takes to load firmware into device. */
@@ -1054,9 +1038,8 @@ int spm_load_pcm_firmware(struct platform_device *pdev)
 		/* start of pcm_desc version */
 		offset += copy_size;
 		copy_size = fw->size - offset;
-		/* the version text need not be NUL-terminated in the file */
 		snprintf(dyna_load_pcm[i].version, PCM_FIRMWARE_VERSION_SIZE - 1,
-				"%.*s", copy_size, fw->data + offset);
+				"%s", fw->data + offset);
 		pdesc->version = dyna_load_pcm[i].version;
 		pdesc->base = (u32 *) dyna_load_pcm[i].buf;
 		pdesc->base_dma = dyna_load_pcm[i].buf_dma;

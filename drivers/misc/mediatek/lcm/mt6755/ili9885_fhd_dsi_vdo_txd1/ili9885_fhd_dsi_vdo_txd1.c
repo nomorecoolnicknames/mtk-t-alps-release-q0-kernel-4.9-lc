@@ -3,6 +3,7 @@
 #ifndef BUILD_LK
 #include <linux/string.h>
 #include <linux/kernel.h>
+#include <linux/m3note_board.h>
 #include <linux/module.h>
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
@@ -52,6 +53,17 @@
 #endif
 
 #define LCM_ID_ILI9885A	0x9885
+
+
+static int m681_panel_owned(void)
+{
+#ifdef BUILD_LK
+	return 1;
+#else
+	return !IS_ENABLED(CONFIG_M3NOTE_DIAGNOSTIC) ||
+		m3note_board_id() == M3NOTE_BOARD_M681;
+#endif
+}
 
 static LCM_UTIL_FUNCS lcm_util;
 
@@ -121,124 +133,12 @@ extern int TPS65132_write_byte(kal_uint8 addr, kal_uint8 value);
 extern int disp_bls_set_backlight(int level_1024);
 #endif
 
-/* ----------------------------------------------------------------------- */
-/* M681 self-contained TPS65132 bias I2C provider.                         */
-/* The m6-base tree builds only this single panel, so the TPS65132 bias    */
-/* driver that used to be supplied by a sibling panel must live here.      */
-/* Transplanted from the proven ili9881p_hd_dsi_txd.c (non-legacy path).   */
-/* ----------------------------------------------------------------------- */
 #ifndef BUILD_LK
-#include <linux/fs.h>
-#include <linux/slab.h>
-#include <linux/init.h>
-#include <linux/list.h>
-#include <linux/i2c.h>
-#include <linux/irq.h>
-#include <linux/uaccess.h>
-#include <linux/interrupt.h>
-#include <linux/io.h>
-#include <linux/platform_device.h>
 #include <linux/jiffies.h>
-
-#ifndef CONFIG_FPGA_EARLY_PORTING
-#define I2C_I2C_LCD_BIAS_CHANNEL 0
-#define TPS_I2C_BUSNUM  I2C_I2C_LCD_BIAS_CHANNEL	/* for I2C channel 0 */
-#define I2C_ID_NAME "tps65132"
-#define TPS_ADDR 0x3E
-
-#if defined(CONFIG_MTK_LEGACY)
-static struct i2c_board_info tps65132_board_info __initdata = { I2C_BOARD_INFO(I2C_ID_NAME, TPS_ADDR) };
+#include <linux/init.h>
+#include <linux/fs.h>
+extern int tps65132_write_bytes(unsigned char addr, unsigned char value);
 #endif
-#if !defined(CONFIG_MTK_LEGACY)
-static const struct of_device_id lcm_of_match[] = {
-		{.compatible = "mediatek,i2c_lcd_bias"},
-		{.compatible = "mediatek,I2C_LCD_BIAS"},
-		{},
-};
-#endif
-
-struct i2c_client *tps65132_i2c_client;
-
-static int tps65132_probe(struct i2c_client *client, const struct i2c_device_id *id);
-static int tps65132_remove(struct i2c_client *client);
-
-static const struct i2c_device_id tps65132_id[] = {
-	{I2C_ID_NAME, 0},
-	{}
-};
-
-static struct i2c_driver tps65132_iic_driver = {
-	.id_table = tps65132_id,
-	.probe = tps65132_probe,
-	.remove = tps65132_remove,
-	.driver = {
-		   .owner = THIS_MODULE,
-		   .name = "ili9885_fhd_dsi_vdo_txd1",
-#if !defined(CONFIG_MTK_LEGACY)
-			.of_match_table = lcm_of_match,
-#endif
-		   },
-};
-
-static int tps65132_probe(struct i2c_client *client, const struct i2c_device_id *id)
-{
-	LCM_LOGI("tps65132_iic_probe\n");
-	tps65132_i2c_client = client;
-	return 0;
-}
-
-static int tps65132_remove(struct i2c_client *client)
-{
-	if (tps65132_i2c_client == client)
-		tps65132_i2c_client = NULL;
-	return 0;
-}
-
-int tps65132_write_bytes(unsigned char addr, unsigned char value)
-{
-	int ret = 0;
-	struct i2c_client *client = tps65132_i2c_client;
-	char write_data[2] = { 0 };
-
-	if (!client) {
-		LCM_LOGI("tps65132 i2c client is not ready !!\n");
-		return -1;
-	}
-
-	write_data[0] = addr;
-	write_data[1] = value;
-	ret = i2c_master_send(client, write_data, 2);
-	if (ret < 0)
-		LCM_LOGI("tps65132 write data fail !!\n");
-	return ret;
-}
-
-static int __init tps65132_iic_init(void)
-{
-	int ret;
-
-	{ extern int forge_display_gate_skip(const char *who); if (forge_display_gate_skip("tps65132")) return 0; }	/* m681-49-disp: NONRST2 self-heal gate */
-	LCM_LOGI("tps65132_iic_init\n");
-#if defined(CONFIG_MTK_LEGACY)
-	i2c_register_board_info(TPS_I2C_BUSNUM, &tps65132_board_info, 1);
-#endif
-	ret = i2c_add_driver(&tps65132_iic_driver);
-	LCM_LOGI("tps65132_iic_init add_driver ret=%d\n", ret);
-	return 0;
-}
-
-static void __exit tps65132_iic_exit(void)
-{
-	i2c_del_driver(&tps65132_iic_driver);
-}
-
-module_init(tps65132_iic_init);
-module_exit(tps65132_iic_exit);
-
-MODULE_DESCRIPTION("MTK TPS65132 I2C Driver (m681 ili9885)");
-MODULE_LICENSE("GPL");
-#endif /* CONFIG_FPGA_EARLY_PORTING */
-#endif /* BUILD_LK */
 
 #ifndef BUILD_LK
 struct m681_txd1_diag_state {
@@ -588,8 +488,12 @@ static void m681_bias_assert_pads(void)
 
 static void m681_bias_guard_fn(struct work_struct *work)
 {
-	int enp_ok = m681_bias_pad_good(M681_LCD_BIAS_ENP_PIN);
-	int enn_ok = m681_bias_pad_good(M681_LCD_BIAS_ENN_PIN);
+	int enp_ok, enn_ok;
+
+	if (!m681_panel_owned())
+		return;
+	enp_ok = m681_bias_pad_good(M681_LCD_BIAS_ENP_PIN);
+	enn_ok = m681_bias_pad_good(M681_LCD_BIAS_ENN_PIN);
 
 	m681_bias_guard_runs++;
 	if (!enp_ok || !enn_ok) {
@@ -732,6 +636,10 @@ static void lcm_init_power(void)
 	int ret01;
 #endif
 
+	if (!m681_panel_owned())
+		return;
+
+
 	SET_RESET_PIN(0);
 	MDELAY(10);
 #ifndef BUILD_LK
@@ -755,6 +663,9 @@ static void lcm_init_power(void)
 
 static void lcm_suspend_power(void)
 {
+	if (!m681_panel_owned())
+		return;
+
 #ifndef BUILD_LK
 	m681_txd1_diag.suspend_power_calls++;
 #endif
@@ -763,6 +674,9 @@ static void lcm_suspend_power(void)
 
 static void lcm_resume_power(void)
 {
+	if (!m681_panel_owned())
+		return;
+
 #ifndef BUILD_LK
 	m681_txd1_diag.resume_power_calls++;
 #endif
@@ -773,6 +687,9 @@ static void lcm_resume_power(void)
 
 static void lcm_init(void)
 {
+	if (!m681_panel_owned())
+		return;
+
 	SET_RESET_PIN(1);
 	MDELAY(5);
 	SET_RESET_PIN(0); 
@@ -789,6 +706,9 @@ static void lcm_init(void)
 
 static void lcm_suspend(void)
 {
+	if (!m681_panel_owned())
+		return;
+
 #ifndef BUILD_LK
 	m681_txd1_diag.suspend_calls++;
 #endif
@@ -831,6 +751,9 @@ static void lcm_suspend(void)
 
 static void lcm_resume(void)
 {
+	if (!m681_panel_owned())
+		return;
+
 #ifndef BUILD_LK
 	m681_txd1_diag.resume_calls++;
 #endif
@@ -841,6 +764,12 @@ static void lcm_setbacklight_cmdq(void *handle, unsigned int level)
 {
 #ifndef BUILD_LK
 	int ret;
+#endif
+
+	if (!m681_panel_owned())
+		return;
+
+#ifndef BUILD_LK
 
 	(void)handle;
 	ret = disp_bls_set_backlight(level);
@@ -940,6 +869,9 @@ static int m681_txd1_diag_proc_show(struct seq_file *m, void *v)
 
 static int m681_txd1_dcs_read_proc_show(struct seq_file *m, void *v)
 {
+	if (!m681_panel_owned())
+		return -ENODEV;
+
 	m681_txd1_diag.dcs_on_demand_calls++;
 	m681_txd1_dcs_readback();
 	seq_puts(m, "[M681][TXD1] explicit DCS readback requested\n");
