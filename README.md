@@ -54,3 +54,7 @@ kernel inputs. This publication does not establish a new kernel rebuild,
 flash/readback, complete hardware acceptance or daily-driver readiness.
 Original authors, copyright notices and GPL licensing in [COPYING](COPYING)
 are preserved; upstream notes remain in [README](README).
+
+## Updated integration
+
+This source selection adds guarded CPU idle and suspend handling, cpufreq and watchdog recovery support, CMDQ compatibility, camera power/OTP ioctl corrections and the S5K4H8 sensor LSC correction. It also contains charger and battery integration changes. These source changes do not establish deep sleep, complete camera operation or thermal safety. Stock-derived calibration and other restricted board inputs are supplied separately; this subset is not a complete standalone source checkout. Matching Android device sources are maintained on the M5c `lineage-20-treble` branch.

@@ -48,9 +48,9 @@
 
 #define MUTEX_TIMEOUT                       (5000)
 #ifdef BAT_TASK_PERIOD_SECOND
-	#define BAT_TASK_PERIOD                     (BAT_TASK_PERIOD_SECOND)
+        #define BAT_TASK_PERIOD                     (BAT_TASK_PERIOD_SECOND)
 #else
-	#define BAT_TASK_PERIOD                     (10)
+        #define BAT_TASK_PERIOD                     (10)
 #endif
 #define g_free_bat_temp					(100)0	/* 1 s */
 extern bool gDisableGM;
@@ -88,29 +88,29 @@ typedef unsigned int WORD;
 
 
 typedef enum {
-	PMU_STATUS_OK = 0,
-	PMU_STATUS_FAIL = 1,
+        PMU_STATUS_OK = 0,
+        PMU_STATUS_FAIL = 1,
 } PMU_STATUS;
 
 
 typedef enum {
-	USB_SUSPEND = 0,
-	USB_UNCONFIGURED,
-	USB_CONFIGURED
+        USB_SUSPEND = 0,
+        USB_UNCONFIGURED,
+        USB_CONFIGURED
 } usb_state_enum;
 
 typedef enum {
-	BATTERY_AVG_CURRENT = 0,
-	BATTERY_AVG_VOLT = 1,
-	BATTERY_AVG_TEMP = 2,
-	BATTERY_AVG_MAX
+        BATTERY_AVG_CURRENT = 0,
+        BATTERY_AVG_VOLT = 1,
+        BATTERY_AVG_TEMP = 2,
+        BATTERY_AVG_MAX
 } BATTERY_AVG_ENUM;
 
 typedef enum {
-	BATTERY_THREAD_TIME = 0,
-	CAR_TIME,
-	SUSPEND_TIME,
-	DURATION_NUM
+        BATTERY_THREAD_TIME = 0,
+        CAR_TIME,
+        SUSPEND_TIME,
+        DURATION_NUM
 } BATTERY_TIME_ENUM;
 
 /*****************************************************************************
@@ -127,12 +127,12 @@ typedef enum {
     <-10      no charging current,              X                    X                    >-10(Up)
 ****************************************************************************/
 typedef enum {
-	TEMP_BELOW_NEG_10 = 0,
-	TEMP_NEG_10_TO_POS_0,
-	TEMP_POS_0_TO_POS_10,
-	TEMP_POS_10_TO_POS_45,
-	TEMP_POS_45_TO_POS_60,
-	TEMP_ABOVE_POS_60
+        TEMP_BELOW_NEG_10 = 0,
+        TEMP_NEG_10_TO_POS_0,
+        TEMP_POS_0_TO_POS_10,
+        TEMP_POS_10_TO_POS_45,
+        TEMP_POS_45_TO_POS_60,
+        TEMP_ABOVE_POS_60
 } temp_state_enum;
 
 
@@ -163,16 +163,16 @@ typedef enum {
  *  Normal battery temperature state
  ****************************************************************************/
 typedef enum {
-	TEMP_POS_LOW = 0,
-	TEMP_POS_NORMAL,
-	TEMP_POS_HIGH
+        TEMP_POS_LOW = 0,
+        TEMP_POS_NORMAL,
+        TEMP_POS_HIGH
 } batt_temp_state_enum;
 
 #ifndef BATTERY_BOOL
 #define BATTERY_BOOL
 typedef enum {
-	KAL_FALSE = 0,
-	KAL_TRUE  = 1,
+        KAL_FALSE = 0,
+        KAL_TRUE  = 1,
 } kal_bool;
 #endif
 
@@ -194,130 +194,130 @@ typedef unsigned char  BOOL;
  *  structure
  ****************************************************************************/
 typedef struct {
-	kal_bool bat_exist;
-	kal_bool bat_full;
-	signed int bat_charging_state;
-	unsigned int bat_vol;
-	kal_bool bat_in_recharging_state;
-	unsigned int Vsense;
-	kal_bool charger_exist;
-	unsigned int charger_vol;
-	signed int charger_protect_status;
-	signed int ICharging;
-	signed int IBattery;
-	signed int CURRENT_NOW;
-	signed int temperature;
-	signed int temperatureR;
-	signed int temperatureV;
-	unsigned int total_charging_time;
-	unsigned int PRE_charging_time;
-	unsigned int CC_charging_time;
-	unsigned int TOPOFF_charging_time;
-	unsigned int POSTFULL_charging_time;
-	unsigned int charger_type;
-	signed int SOC;
-	signed int UI_SOC;
-	signed int UI_SOC2;
-	unsigned int nPercent_ZCV;
-	unsigned int nPrecent_UI_SOC_check_point;
-	unsigned int ZCV;
+        kal_bool bat_exist;
+        kal_bool bat_full;
+        signed int bat_charging_state;
+        unsigned int bat_vol;
+        kal_bool bat_in_recharging_state;
+        unsigned int Vsense;
+        kal_bool charger_exist;
+        unsigned int charger_vol;
+        signed int charger_protect_status;
+        signed int ICharging;
+        signed int IBattery;
+        signed int CURRENT_NOW;
+        signed int temperature;
+        signed int temperatureR;
+        signed int temperatureV;
+        unsigned int total_charging_time;
+        unsigned int PRE_charging_time;
+        unsigned int CC_charging_time;
+        unsigned int TOPOFF_charging_time;
+        unsigned int POSTFULL_charging_time;
+        unsigned int charger_type;
+        signed int SOC;
+        signed int UI_SOC;
+        signed int UI_SOC2;
+        unsigned int nPercent_ZCV;
+        unsigned int nPrecent_UI_SOC_check_point;
+        unsigned int ZCV;
 } PMU_ChargerStruct;
 
 struct battery_custom_data {
-	/* mt_charging.h */
-	/* stop charging while in talking mode */
-	int stop_charging_in_takling;
-	int talking_recharge_voltage;
-	int talking_sync_time;
+        /* mt_charging.h */
+        /* stop charging while in talking mode */
+        int stop_charging_in_takling;
+        int talking_recharge_voltage;
+        int talking_sync_time;
 
-	/* Battery Temperature Protection */
-	int mtk_temperature_recharge_support;
-	int max_charge_temperature;
-	int max_charge_temperature_minus_x_degree;
-	int min_charge_temperature;
-	int min_charge_temperature_plus_x_degree;
-	int err_charge_temperature;
+        /* Battery Temperature Protection */
+        int mtk_temperature_recharge_support;
+        int max_charge_temperature;
+        int max_charge_temperature_minus_x_degree;
+        int min_charge_temperature;
+        int min_charge_temperature_plus_x_degree;
+        int err_charge_temperature;
 
-	/* Linear Charging Threshold */
-	int v_pre2cc_thres;
-	int v_cc2topoff_thres;
-	int recharging_voltage;
-	int charging_full_current;
+        /* Linear Charging Threshold */
+        int v_pre2cc_thres;
+        int v_cc2topoff_thres;
+        int recharging_voltage;
+        int charging_full_current;
 
-	/* Charging Current Setting */
-	int config_usb_if;
-	int usb_charger_current_suspend;
-	int usb_charger_current_unconfigured;
-	int usb_charger_current_configured;
-	int usb_charger_current;
-	int ac_charger_input_current;
-	int ac_charger_current;
-	int non_std_ac_charger_current;
-	int charging_host_charger_current;
-	int apple_0_5a_charger_current;
-	int apple_1_0a_charger_current;
-	int apple_2_1a_charger_current;
+        /* Charging Current Setting */
+        int config_usb_if;
+        int usb_charger_current_suspend;
+        int usb_charger_current_unconfigured;
+        int usb_charger_current_configured;
+        int usb_charger_current;
+        int ac_charger_input_current;
+        int ac_charger_current;
+        int non_std_ac_charger_current;
+        int charging_host_charger_current;
+        int apple_0_5a_charger_current;
+        int apple_1_0a_charger_current;
+        int apple_2_1a_charger_current;
 
-	/* Precise Tunning
-	   int battery_average_data_number;
-	   int battery_average_size;
-	 */
+        /* Precise Tunning
+           int battery_average_data_number;
+           int battery_average_size;
+         */
 
-	/* charger error check */
-	int bat_low_temp_protect_enable;
-	int v_charger_enable;
-	int v_charger_max;
-	int v_charger_min;
+        /* charger error check */
+        int bat_low_temp_protect_enable;
+        int v_charger_enable;
+        int v_charger_max;
+        int v_charger_min;
 
-	/* Tracking TIME */
-	int onehundred_percent_tracking_time;
-	int npercent_tracking_time;
-	int sync_to_real_tracking_time;
-	int v_0percent_tracking;
+        /* Tracking TIME */
+        int onehundred_percent_tracking_time;
+        int npercent_tracking_time;
+        int sync_to_real_tracking_time;
+        int v_0percent_tracking;
 
-	/* Battery Notify
-	   int battery_notify_case_0001_vcharger;
-	   int battery_notify_case_0002_vbattemp;
-	   int battery_notify_case_0003_icharging;
-	   int battery_notify_case_0004_vbat;
-	   int battery_notify_case_0005_total_chargingtime;
-	 */
+        /* Battery Notify
+           int battery_notify_case_0001_vcharger;
+           int battery_notify_case_0002_vbattemp;
+           int battery_notify_case_0003_icharging;
+           int battery_notify_case_0004_vbat;
+           int battery_notify_case_0005_total_chargingtime;
+         */
 
-	/* High battery support */
-	int high_battery_voltage_support;
+        /* High battery support */
+        int high_battery_voltage_support;
 
-	/* JEITA parameter */
-	int mtk_jeita_standard_support;
-	int cust_soc_jeita_sync_time;
-	int jeita_recharge_voltage;
-	int jeita_temp_above_pos_60_cv_voltage;
-	int jeita_temp_pos_45_to_pos_60_cv_voltage;
-	int jeita_temp_pos_10_to_pos_45_cv_voltage;
-	int jeita_temp_pos_0_to_pos_10_cv_voltage;
-	int jeita_temp_neg_10_to_pos_0_cv_voltage;
-	int jeita_temp_below_neg_10_cv_voltage;
+        /* JEITA parameter */
+        int mtk_jeita_standard_support;
+        int cust_soc_jeita_sync_time;
+        int jeita_recharge_voltage;
+        int jeita_temp_above_pos_60_cv_voltage;
+        int jeita_temp_pos_45_to_pos_60_cv_voltage;
+        int jeita_temp_pos_10_to_pos_45_cv_voltage;
+        int jeita_temp_pos_0_to_pos_10_cv_voltage;
+        int jeita_temp_neg_10_to_pos_0_cv_voltage;
+        int jeita_temp_below_neg_10_cv_voltage;
 
-	/* For JEITA Linear Charging only */
-	int jeita_neg_10_to_pos_0_full_current;
-	int jeita_temp_pos_45_to_pos_60_recharge_voltage;
-	int jeita_temp_pos_10_to_pos_45_recharge_voltage;
-	int jeita_temp_pos_0_to_pos_10_recharge_voltage;
-	int jeita_temp_neg_10_to_pos_0_recharge_voltage;
-	int jeita_temp_pos_45_to_pos_60_cc2topoff_threshold;
-	int jeita_temp_pos_10_to_pos_45_cc2topoff_threshold;
-	int jeita_temp_pos_0_to_pos_10_cc2topoff_threshold;
-	int jeita_temp_neg_10_to_pos_0_cc2topoff_threshold;
+        /* For JEITA Linear Charging only */
+        int jeita_neg_10_to_pos_0_full_current;
+        int jeita_temp_pos_45_to_pos_60_recharge_voltage;
+        int jeita_temp_pos_10_to_pos_45_recharge_voltage;
+        int jeita_temp_pos_0_to_pos_10_recharge_voltage;
+        int jeita_temp_neg_10_to_pos_0_recharge_voltage;
+        int jeita_temp_pos_45_to_pos_60_cc2topoff_threshold;
+        int jeita_temp_pos_10_to_pos_45_cc2topoff_threshold;
+        int jeita_temp_pos_0_to_pos_10_cc2topoff_threshold;
+        int jeita_temp_neg_10_to_pos_0_cc2topoff_threshold;
 
-	/* cust_pe.h */
-	int mtk_pump_express_plus_support;
-	int ta_start_battery_soc;
-	int ta_stop_battery_soc;
-	int ta_ac_12v_input_current;
-	int ta_ac_9v_input_current;
-	int ta_ac_7v_input_current;
-	int ta_ac_charging_current;
-	int ta_12v_support;
-	int ta_9v_support;
+        /* cust_pe.h */
+        int mtk_pump_express_plus_support;
+        int ta_start_battery_soc;
+        int ta_stop_battery_soc;
+        int ta_ac_12v_input_current;
+        int ta_ac_9v_input_current;
+        int ta_ac_7v_input_current;
+        int ta_ac_charging_current;
+        int ta_12v_support;
+        int ta_9v_support;
 };
 
 /*****************************************************************************
@@ -403,7 +403,7 @@ extern void mt_usb_disconnect(void);
 #endif
 void check_battery_exist(void);
 #ifdef DLPT_POWER_OFF_EN
-	extern int dlpt_check_power_off(void);
+        extern int dlpt_check_power_off(void);
 #endif
 
 extern bool is_usb_rdy(void);
@@ -424,5 +424,11 @@ extern void mt_usb_disconnect(void);
 
 
 
+
+#ifdef CONFIG_FORGE_M5C_BATTERY_PROFILE
+/* forge (m5c): stock battery id - 0 ATL, 1 VEKEN, 2 SUNWODA, -1 unknown
+ * (battery_meter.c) */
+extern int forge_m5c_battery_id(void);
+#endif
 
 #endif				/* #ifndef BATTERY_COMMON_H */

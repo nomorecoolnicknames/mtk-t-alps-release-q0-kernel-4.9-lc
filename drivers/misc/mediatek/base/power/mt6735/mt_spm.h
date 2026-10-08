@@ -268,68 +268,69 @@ extern u32 spm_irq_7;
 /******/
 /* Wakeup Source */
 enum SPM_WAKE_SRC_LIST	{
-	WAKE_SRC_SPM_MERGE = (1U << 0),  /* PCM timer, TWAM or CPU */
-	WAKE_SRC_LTE_PTP = (1U << 1),
-	WAKE_SRC_KP = (1U << 2),
-	WAKE_SRC_WDT = (1U << 3),
-	WAKE_SRC_GPT = (1U << 4),
-	WAKE_SRC_EINT = (1U << 5),
-	WAKE_SRC_CONN_WDT = (1U << 6),
-	WAKE_SRC_CCIF0_MD = (1U << 7),
-	WAKE_SRC_CCIF1_MD = (1U << 8),
-	WAKE_SRC_LOW_BAT = (1U << 9),
-	WAKE_SRC_CONN2AP = (1U << 10),
-	WAKE_SRC_F26M_WAKE = (1U << 11),
-	WAKE_SRC_F26M_SLEEP = (1U << 12),
-	WAKE_SRC_PCM_WDT = (1U << 13),
-	WAKE_SRC_USB_CD = (1U << 14),
-	WAKE_SRC_USB_PDN = (1U << 15),
-	WAKE_SRC_LTE_WAKE = (1U << 16),
-	WAKE_SRC_LTE_SLEEP = (1U << 17),
-	WAKE_SRC_SEJ = (1U << 18),
-	WAKE_SRC_UART0 = (1U << 19),
-	WAKE_SRC_AFE = (1U << 20),
-	WAKE_SRC_THERM = (1U << 21),
-	WAKE_SRC_CIRQ = (1U << 22),
-	WAKE_SRC_MD1_VRF18_WAKE = (1U << 23),
-	WAKE_SRC_SYSPWREQ = (1U << 24),
-	WAKE_SRC_MD_WDT = (1U << 25),
-	WAKE_SRC_C2K_WDT = (1U << 26),
-	WAKE_SRC_CLDMA_MD = (1U << 27),
-	WAKE_SRC_MD1_VRF18_SLEEP = (1U << 28),
-	WAKE_SRC_CPU_IRQ = (1U << 29),
-	WAKE_SRC_APSRC_WAKE = (1U << 30),
-	WAKE_SRC_APSRC_SLEEP = (1U << 31)
+        WAKE_SRC_SPM_MERGE = (1U << 0),  /* PCM timer, TWAM or CPU */
+        WAKE_SRC_LTE_PTP = (1U << 1),
+        WAKE_SRC_KP = (1U << 2),
+        WAKE_SRC_WDT = (1U << 3),
+        WAKE_SRC_GPT = (1U << 4),
+        WAKE_SRC_EINT = (1U << 5),
+        WAKE_SRC_CONN_WDT = (1U << 6),
+        WAKE_SRC_CCIF0_MD = (1U << 7),
+        WAKE_SRC_CCIF1_MD = (1U << 8),
+        WAKE_SRC_LOW_BAT = (1U << 9),
+        WAKE_SRC_CONN2AP = (1U << 10),
+        WAKE_SRC_F26M_WAKE = (1U << 11),
+        WAKE_SRC_F26M_SLEEP = (1U << 12),
+        WAKE_SRC_PCM_WDT = (1U << 13),
+        WAKE_SRC_USB_CD = (1U << 14),
+        WAKE_SRC_USB_PDN = (1U << 15),
+        WAKE_SRC_LTE_WAKE = (1U << 16),
+        WAKE_SRC_LTE_SLEEP = (1U << 17),
+        WAKE_SRC_SEJ = (1U << 18),
+        WAKE_SRC_UART0 = (1U << 19),
+        WAKE_SRC_AFE = (1U << 20),
+        WAKE_SRC_THERM = (1U << 21),
+        WAKE_SRC_CIRQ = (1U << 22),
+        WAKE_SRC_MD1_VRF18_WAKE = (1U << 23),
+        WAKE_SRC_SYSPWREQ = (1U << 24),
+        WAKE_SRC_MD_WDT = (1U << 25),
+        WAKE_SRC_C2K_WDT = (1U << 26),
+        WAKE_SRC_CLDMA_MD = (1U << 27),
+        WAKE_SRC_MD1_VRF18_SLEEP = (1U << 28),
+        WAKE_SRC_CPU_IRQ = (1U << 29),
+        WAKE_SRC_APSRC_WAKE = (1U << 30),
+        WAKE_SRC_APSRC_SLEEP = (1U << 31)
 };
 
 typedef enum {
-	WR_NONE = 0,
-	WR_UART_BUSY = 1,
-	WR_PCM_ASSERT = 2,
-	WR_PCM_TIMER = 3,
-	WR_WAKE_SRC = 4,
-	WR_UNKNOWN = 5,
+        WR_NONE = 0,
+        WR_UART_BUSY = 1,
+        WR_PCM_ASSERT = 2,
+        WR_PCM_TIMER = 3,
+        WR_WAKE_SRC = 4,
+        WR_UNKNOWN = 5,
 } wake_reason_t;
 
 struct twam_sig {
-	u32 sig0;		/* signal 0: config or status */
-	u32 sig1;		/* signal 1: config or status */
-	u32 sig2;		/* signal 2: config or status */
-	u32 sig3;		/* signal 3: config or status */
+        u32 sig0;		/* signal 0: config or status */
+        u32 sig1;		/* signal 1: config or status */
+        u32 sig2;		/* signal 2: config or status */
+        u32 sig3;		/* signal 3: config or status */
 };
 
 enum spm_clk_buf_pad_id {
-	BSI_EN_SR = 0,
-	BSI_CLK_SR = 1,
-	BSI_D0_SR = 2,
-	BSI_D1_SR = 3,
-	BSI_D2_SR = 4,
+        BSI_EN_SR = 0,
+        BSI_CLK_SR = 1,
+        BSI_D0_SR = 2,
+        BSI_D1_SR = 3,
+        BSI_D2_SR = 4,
 };
 
 typedef void (*twam_handler_t) (struct twam_sig *twamsig);
 
 /* check if spm firmware ready */
 extern int spm_load_firmware_status(void);
+extern int spm_suspend_firmware_status(void);
 
 /* for power management init */
 extern int spm_module_init(void);
@@ -341,7 +342,7 @@ extern void spm_mainpll_on_unrequest(const char *drv_name);
 /* for TWAM in MET */
 extern void spm_twam_register_handler(twam_handler_t handler);
 extern void spm_twam_enable_monitor(const struct twam_sig *twamsig,
-				    bool speed_mode, unsigned int window_len);
+                                    bool speed_mode, unsigned int window_len);
 extern void spm_twam_disable_monitor(void);
 
 /* for Vcore DVFS */

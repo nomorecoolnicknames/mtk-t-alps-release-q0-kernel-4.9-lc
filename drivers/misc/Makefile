@@ -70,8 +70,9 @@ KCOV_INSTRUMENT_lkdtm_rodata.o	:= n
 
 OBJCOPYFLAGS :=
 OBJCOPYFLAGS_lkdtm_rodata_objcopy.o := \
-			--set-section-flags .text=alloc,readonly \
-			--rename-section .text=.rodata
+                        --set-section-flags .text=alloc,readonly \
+                        --rename-section .text=.rodata
 targets += lkdtm_rodata.o lkdtm_rodata_objcopy.o
 $(obj)/lkdtm_rodata_objcopy.o: $(obj)/lkdtm_rodata.o FORCE
-	$(call if_changed,objcopy)
+        $(call if_changed,objcopy)
+obj-$(CONFIG_FORGE_M5C_BOOTGUARD)	+= forge_m5c_bootguard.o
