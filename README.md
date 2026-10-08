@@ -52,3 +52,7 @@ No kernel image, device identity, calibration archive or firmware payload is
 included. Original authorship and copyright/license notices in retained source
 files are preserved. GPL information is in [COPYING](COPYING); upstream notes
 remain in [README](README).
+
+## USB reconnection integration
+
+A narrow M681 controller correction restarts the MU3D controller after VBUS returns and resets the cable-out state. The three controller files are integrated over the existing unified branch without removing L681 panel or board support. This is a partial patch integration, not an export of the complete newer M681 development snapshot. The matching USB-fix candidate was compiled; physical reconnection acceptance remains pending. Existing external source dependencies and both-revision validation limitations still apply.

@@ -122,12 +122,12 @@ extern CHARGER_TYPE mt_get_charger_type(void);
 
 static inline struct usb_hcd *musb_to_hcd(struct musb *musb)
 {
-	return container_of((void *)musb, struct usb_hcd, hcd_priv);
+        return container_of((void *)musb, struct usb_hcd, hcd_priv);
 }
 
 static inline struct musb *hcd_to_musb(struct usb_hcd *hcd)
 {
-	return (struct musb *)(hcd->hcd_priv);
+        return (struct musb *)(hcd->hcd_priv);
 }
 
 /****************************** PERIPHERAL ROLE *****************************/
@@ -166,36 +166,36 @@ extern void musb_host_rx(struct musb *, u8);
 
 /* USB working mode */
 typedef enum {
-	CABLE_MODE_CHRG_ONLY = 0,
-	CABLE_MODE_NORMAL,
-	CABLE_MODE_HOST_ONLY,
-	CABLE_MODE_MAX
+        CABLE_MODE_CHRG_ONLY = 0,
+        CABLE_MODE_NORMAL,
+        CABLE_MODE_HOST_ONLY,
+        CABLE_MODE_MAX
 } CABLE_MODE;
 
 typedef enum {
-	USB_SUSPEND = 0,
-	USB_UNCONFIGURED,
-	USB_CONFIGURED
+        USB_SUSPEND = 0,
+        USB_UNCONFIGURED,
+        USB_CONFIGURED
 } usb_state_enum;
 
 /* host side ep0 states */
 enum musb_h_ep0_state {
-	MUSB_EP0_IDLE,
-	MUSB_EP0_START,		/* expect ack of setup */
-	MUSB_EP0_IN,		/* expect IN DATA */
-	MUSB_EP0_OUT,		/* expect ack of OUT DATA */
-	MUSB_EP0_STATUS,	/* expect ack of STATUS */
+        MUSB_EP0_IDLE,
+        MUSB_EP0_START,		/* expect ack of setup */
+        MUSB_EP0_IN,		/* expect IN DATA */
+        MUSB_EP0_OUT,		/* expect ack of OUT DATA */
+        MUSB_EP0_STATUS,	/* expect ack of STATUS */
 } __packed;
 
 /* peripheral side ep0 states */
 enum musb_g_ep0_state {
-	MUSB_EP0_STAGE_IDLE,	/* idle, waiting for SETUP */
-	MUSB_EP0_STAGE_SETUP,	/* received SETUP */
-	MUSB_EP0_STAGE_TX,	/* IN data */
-	MUSB_EP0_STAGE_RX,	/* OUT data */
-	MUSB_EP0_STAGE_STATUSIN,	/* (after OUT data) */
-	MUSB_EP0_STAGE_STATUSOUT,	/* (after IN data) */
-	MUSB_EP0_STAGE_ACKWAIT,	/* after zlp, before statusin */
+        MUSB_EP0_STAGE_IDLE,	/* idle, waiting for SETUP */
+        MUSB_EP0_STAGE_SETUP,	/* received SETUP */
+        MUSB_EP0_STAGE_TX,	/* IN data */
+        MUSB_EP0_STAGE_RX,	/* OUT data */
+        MUSB_EP0_STAGE_STATUSIN,	/* (after OUT data) */
+        MUSB_EP0_STAGE_STATUSOUT,	/* (after IN data) */
+        MUSB_EP0_STAGE_ACKWAIT,	/* after zlp, before statusin */
 } __packed;
 
 /*
@@ -215,8 +215,8 @@ enum musb_g_ep0_state {
  */
 
 #if defined(CONFIG_ARCH_DAVINCI) || defined(CONFIG_SOC_OMAP2430) \
-		|| defined(CONFIG_SOC_OMAP3430) || defined(CONFIG_BLACKFIN) \
-		|| defined(CONFIG_ARCH_OMAP4)
+                || defined(CONFIG_SOC_OMAP3430) || defined(CONFIG_BLACKFIN) \
+                || defined(CONFIG_ARCH_OMAP4)
 /* REVISIT indexed access seemed to
  * misbehave (on DaVinci) for at least peripheral IN ...
  */
@@ -226,7 +226,7 @@ enum musb_g_ep0_state {
 /* TUSB mapping: "flat" plus ep0 special cases */
 #if	defined(CONFIG_USB_TUSB6010)
 #define musb_ep_select(_mbase, _epnum) \
-	musb_writeb((_mbase), MUSB_INDEX, (_epnum))
+        musb_writeb((_mbase), MUSB_INDEX, (_epnum))
 #define	MUSB_EP_OFFSET			MUSB_TUSB_OFFSET
 
 /* "flat" mapping: each endpoint has its own i/o address */
@@ -237,7 +237,7 @@ enum musb_g_ep0_state {
 /* "indexed" mapping: INDEX register controls register bank select */
 #else
 #define musb_ep_select(_mbase, _epnum) \
-	musb_writeb((_mbase), MUSB_INDEX, (_epnum))
+        musb_writeb((_mbase), MUSB_INDEX, (_epnum))
 #define	MUSB_EP_OFFSET			MUSB_INDEXED_OFFSET
 #endif
 
@@ -245,40 +245,40 @@ enum musb_g_ep0_state {
 
 
 #define	SSUSB_EP_TXCR0_OFFSET(_epnum, _offset)	\
-	(U3D_TX1CSR0 + ((_epnum - 1)*0x10) + (_offset))
+        (U3D_TX1CSR0 + ((_epnum - 1)*0x10) + (_offset))
 
 #define	SSUSB_EP_TXCR1_OFFSET(_epnum, _offset)	\
-	(U3D_TX1CSR1 + ((_epnum - 1)*0x10) + (_offset))
+        (U3D_TX1CSR1 + ((_epnum - 1)*0x10) + (_offset))
 
 #define	SSUSB_EP_TXCR2_OFFSET(_epnum, _offset)	\
-	(U3D_TX1CSR2 + ((_epnum - 1)*0x10) + (_offset))
+        (U3D_TX1CSR2 + ((_epnum - 1)*0x10) + (_offset))
 
 #define	SSUSB_EP_TXMAXP_OFFSET(_epnum, _offset)	\
-	(U3D_TX1CSR0 + ((_epnum - 1)*0x10) + (_offset))
+        (U3D_TX1CSR0 + ((_epnum - 1)*0x10) + (_offset))
 
 #define	SSUSB_EP_RXCR0_OFFSET(_epnum, _offset)	\
-	(U3D_RX1CSR0 + ((_epnum - 1)*0x10) + (_offset))
+        (U3D_RX1CSR0 + ((_epnum - 1)*0x10) + (_offset))
 
 #define	SSUSB_EP_RXCR1_OFFSET(_epnum, _offset)	\
-	(U3D_RX1CSR1 + ((_epnum - 1)*0x10) + (_offset))
+        (U3D_RX1CSR1 + ((_epnum - 1)*0x10) + (_offset))
 
 #define	SSUSB_EP_RXCR2_OFFSET(_epnum, _offset)	\
-	(U3D_RX1CSR2 + ((_epnum - 1)*0x10) + (_offset))
+        (U3D_RX1CSR2 + ((_epnum - 1)*0x10) + (_offset))
 
 #define	SSUSB_EP_RXCR3_OFFSET(_epnum, _offset)	\
-	(U3D_RX1CSR3 + ((_epnum - 1)*0x10) + (_offset))
+        (U3D_RX1CSR3 + ((_epnum - 1)*0x10) + (_offset))
 
 
 
 /****************************** FUNCTIONS ********************************/
 
 #define MUSB_HST_MODE(_musb)\
-	{ (_musb)->is_host = true; }
+        { (_musb)->is_host = true; }
 #define MUSB_DEV_MODE(_musb) \
-	{ (_musb)->is_host = false; }
+        { (_musb)->is_host = false; }
 
 #define test_devctl_hst_mode(_x) \
-	(musb_readb((_x)->mregs, MUSB_DEVCTL)&MUSB_DEVCTL_HM)
+        (musb_readb((_x)->mregs, MUSB_DEVCTL)&MUSB_DEVCTL_HM)
 
 #define MUSB_MODE(musb) ((musb)->is_host ? "Host" : "Peripheral")
 
@@ -295,20 +295,20 @@ enum musb_g_ep0_state {
  * @adjust_channel_params: pre check for standard dma channel_program func
  */
 struct musb_platform_ops {
-	int (*init)(struct musb *musb);
-	int (*exit)(struct musb *musb);
+        int (*init)(struct musb *musb);
+        int (*exit)(struct musb *musb);
 
-	void (*enable)(struct musb *musb);
-	void (*disable)(struct musb *musb);
+        void (*enable)(struct musb *musb);
+        void (*disable)(struct musb *musb);
 
-	int (*set_mode)(struct musb *musb, u8 mode);
-	void (*try_idle)(struct musb *musb, unsigned long timeout);
+        int (*set_mode)(struct musb *musb, u8 mode);
+        void (*try_idle)(struct musb *musb, unsigned long timeout);
 
-	int (*vbus_status)(struct musb *musb);
-	void (*set_vbus)(struct musb *musb, int on);
+        int (*vbus_status)(struct musb *musb);
+        void (*set_vbus)(struct musb *musb, int on);
 
-	int (*adjust_channel_params)(struct dma_channel *channel,
-				      u16 packet_sz, u8 *mode, dma_addr_t *dma_addr, u32 *len);
+        int (*adjust_channel_params)(struct dma_channel *channel,
+                                      u16 packet_sz, u8 *mode, dma_addr_t *dma_addr, u32 *len);
 };
 
 /*
@@ -317,139 +317,139 @@ struct musb_platform_ops {
  * Ordered slightly for better cacheline locality.
  */
 struct musb_hw_ep {
-	struct musb *musb;
-	void __iomem *fifo;
-	void __iomem *regs;
+        struct musb *musb;
+        void __iomem *fifo;
+        void __iomem *regs;
 
-	/* For ssusb+ */
-	void __iomem *addr_txcsr0;
-	void __iomem *addr_txcsr1;
-	void __iomem *addr_txcsr2;
-	/* void __iomem          *addr_txmaxpktsz; */
+        /* For ssusb+ */
+        void __iomem *addr_txcsr0;
+        void __iomem *addr_txcsr1;
+        void __iomem *addr_txcsr2;
+        /* void __iomem          *addr_txmaxpktsz; */
 
-	void __iomem *addr_rxcsr0;
-	void __iomem *addr_rxcsr1;
-	void __iomem *addr_rxcsr2;
-	void __iomem *addr_rxcsr3;
-	void __iomem *addr_rxmaxpktsz;
-	/* For ssusb- */
-
-#if defined(CONFIG_USB_MUSB_TUSB6010) || \
-	defined(CONFIG_USB_MUSB_TUSB6010_MODULE)
-	void __iomem *conf;
-#endif
-
-	/* index in musb->endpoints[]  */
-	u8 epnum;
-
-	/* hardware configuration, possibly dynamic */
-	bool is_shared_fifo;
-	/* bool                  tx_double_buffered; */
-	/* bool                  rx_double_buffered; */
-	u16 max_packet_sz_tx;
-	u16 max_packet_sz_rx;
-
-	/* For ssusb+ */
-	u32 fifoaddr_tx;
-	u32 fifoaddr_rx;
-
-	u8 mult_tx;
-	u8 mult_rx;
-
-	u8 interval_tx;
-	u8 interval_rx;
-	/* For ssusb- */
-
-	struct dma_channel *tx_channel;
-	struct dma_channel *rx_channel;
+        void __iomem *addr_rxcsr0;
+        void __iomem *addr_rxcsr1;
+        void __iomem *addr_rxcsr2;
+        void __iomem *addr_rxcsr3;
+        void __iomem *addr_rxmaxpktsz;
+        /* For ssusb- */
 
 #if defined(CONFIG_USB_MUSB_TUSB6010) || \
-	defined(CONFIG_USB_MUSB_TUSB6010_MODULE)
-	/* TUSB has "asynchronous" and "synchronous" dma modes */
-	dma_addr_t fifo_async;
-	dma_addr_t fifo_sync;
-	void __iomem *fifo_sync_va;
+        defined(CONFIG_USB_MUSB_TUSB6010_MODULE)
+        void __iomem *conf;
 #endif
 
-	void __iomem *target_regs;
+        /* index in musb->endpoints[]  */
+        u8 epnum;
 
-	/* currently scheduled peripheral endpoint */
-	struct musb_qh *in_qh;
-	struct musb_qh *out_qh;
+        /* hardware configuration, possibly dynamic */
+        bool is_shared_fifo;
+        /* bool                  tx_double_buffered; */
+        /* bool                  rx_double_buffered; */
+        u16 max_packet_sz_tx;
+        u16 max_packet_sz_rx;
 
-	u8 rx_reinit;
-	u8 tx_reinit;
+        /* For ssusb+ */
+        u32 fifoaddr_tx;
+        u32 fifoaddr_rx;
 
-	/* peripheral side */
-	struct musb_ep ep_in;	/* TX */
-	struct musb_ep ep_out;	/* RX */
+        u8 mult_tx;
+        u8 mult_rx;
+
+        u8 interval_tx;
+        u8 interval_rx;
+        /* For ssusb- */
+
+        struct dma_channel *tx_channel;
+        struct dma_channel *rx_channel;
+
+#if defined(CONFIG_USB_MUSB_TUSB6010) || \
+        defined(CONFIG_USB_MUSB_TUSB6010_MODULE)
+        /* TUSB has "asynchronous" and "synchronous" dma modes */
+        dma_addr_t fifo_async;
+        dma_addr_t fifo_sync;
+        void __iomem *fifo_sync_va;
+#endif
+
+        void __iomem *target_regs;
+
+        /* currently scheduled peripheral endpoint */
+        struct musb_qh *in_qh;
+        struct musb_qh *out_qh;
+
+        u8 rx_reinit;
+        u8 tx_reinit;
+
+        /* peripheral side */
+        struct musb_ep ep_in;	/* TX */
+        struct musb_ep ep_out;	/* RX */
 };
 
 static inline struct musb_request *next_in_request(struct musb_hw_ep *hw_ep)
 {
-	return next_request(&hw_ep->ep_in);
+        return next_request(&hw_ep->ep_in);
 }
 
 static inline struct musb_request *next_out_request(struct musb_hw_ep *hw_ep)
 {
-	return next_request(&hw_ep->ep_out);
+        return next_request(&hw_ep->ep_out);
 }
 
 #ifdef NEVER
 struct musb_csr_regs {
-	/* FIFO registers */
-	u16 txmaxp, txcsr, rxmaxp, rxcsr;
-	u16 rxfifoadd, txfifoadd;
-	u8 txtype, txinterval, rxtype, rxinterval;
-	u8 rxfifosz, txfifosz;
-	u8 txfunaddr, txhubaddr, txhubport;
-	u8 rxfunaddr, rxhubaddr, rxhubport;
+        /* FIFO registers */
+        u16 txmaxp, txcsr, rxmaxp, rxcsr;
+        u16 rxfifoadd, txfifoadd;
+        u8 txtype, txinterval, rxtype, rxinterval;
+        u8 rxfifosz, txfifosz;
+        u8 txfunaddr, txhubaddr, txhubport;
+        u8 rxfunaddr, rxhubaddr, rxhubport;
 };
 
 struct musb_context_registers {
 
-	u8 power;
-	u16 intrtxe, intrrxe;
-	u8 intrusbe;
-	u16 frame;
-	u8 index, testmode;
+        u8 power;
+        u16 intrtxe, intrrxe;
+        u8 intrusbe;
+        u16 frame;
+        u8 index, testmode;
 
-	u8 devctl, busctl, misc;
+        u8 devctl, busctl, misc;
 
-	struct musb_csr_regs index_regs[MUSB_C_NUM_EPS];
+        struct musb_csr_regs index_regs[MUSB_C_NUM_EPS];
 };
 #endif				/* NEVER */
 
 #ifdef CONFIG_USB_MU3D_DRV
 struct musb_csr_regs {
-	/* FIFO registers */
-	/* u32 txcsr0, txcsr1, txcsr2; */
-	/* u32 rxcsr0, rxcsr1, rxcsr2; */
+        /* FIFO registers */
+        /* u32 txcsr0, txcsr1, txcsr2; */
+        /* u32 rxcsr0, rxcsr1, rxcsr2; */
 #ifdef USE_SSUSB_QMU
-	u32 txqmuaddr, rxqmuaddr;
+        u32 txqmuaddr, rxqmuaddr;
 #endif
-	/* u16 txmaxp, txcsr, rxmaxp, rxcsr; */
-	/* u16 rxfifoadd, txfifoadd; */
-	/* u8 txtype, txinterval, rxtype, rxinterval; */
-	/* u8 rxfifosz, txfifosz; */
+        /* u16 txmaxp, txcsr, rxmaxp, rxcsr; */
+        /* u16 rxfifoadd, txfifoadd; */
+        /* u8 txtype, txinterval, rxtype, rxinterval; */
+        /* u8 rxfifosz, txfifosz; */
 
-	/* u8 txfunaddr, txhubaddr, txhubport; */
-	/* u8 rxfunaddr, rxhubaddr, rxhubport; */
+        /* u8 txfunaddr, txhubaddr, txhubport; */
+        /* u8 rxfunaddr, rxhubaddr, rxhubport; */
 };
 
 struct musb_context_registers {
 
-	/* u8 power; */
-	/* u16 intrtxe, intrrxe; */
-	/* u8 intrusbe; */
-	/* u16 frame; */
-	/* u8 index, testmode; */
+        /* u8 power; */
+        /* u16 intrtxe, intrrxe; */
+        /* u8 intrusbe; */
+        /* u16 frame; */
+        /* u8 index, testmode; */
 
-	/* u8 devctl, busctl, misc; */
-	/* u32 intr_ep; */
-	/* u32 ep0_csr; */
-	/* u32 qmu_crs, intr_qmu_done; */
-	struct musb_csr_regs index_regs[MUSB_C_NUM_EPS];
+        /* u8 devctl, busctl, misc; */
+        /* u32 intr_ep; */
+        /* u32 ep0_csr; */
+        /* u32 qmu_crs, intr_qmu_done; */
+        struct musb_csr_regs index_regs[MUSB_C_NUM_EPS];
 };
 #endif
 
@@ -457,240 +457,240 @@ struct musb_context_registers {
  * struct musb - Driver instance data.
  */
 struct musb {
-	/* device lock */
-	spinlock_t lock;
-	struct semaphore musb_lock;
+        /* device lock */
+        spinlock_t lock;
+        struct semaphore musb_lock;
 
-	const struct musb_platform_ops *ops;
-	struct musb_context_registers context;
+        const struct musb_platform_ops *ops;
+        struct musb_context_registers context;
 
-	 irqreturn_t (*isr)(int, void *);
-	struct work_struct irq_work;
-	u32 hwvers;
+         irqreturn_t (*isr)(int, void *);
+        struct work_struct irq_work;
+        u32 hwvers;
 
 /* this hub status bit is reserved by USB 2.0 and not seen by usbcore */
 #define MUSB_PORT_STAT_RESUME	(1 << 31)
 
-	u32 port1_status;
+        u32 port1_status;
 
-	unsigned long rh_timer;
+        unsigned long rh_timer;
 
-	enum musb_h_ep0_state ep0_stage;
+        enum musb_h_ep0_state ep0_stage;
 
-	/* bulk traffic normally dedicates endpoint hardware, and each
-	 * direction has its own ring of host side endpoints.
-	 * we try to progress the transfer at the head of each endpoint's
-	 * queue until it completes or NAKs too much; then we try the next
-	 * endpoint.
-	 */
-	struct musb_hw_ep *bulk_ep;
+        /* bulk traffic normally dedicates endpoint hardware, and each
+         * direction has its own ring of host side endpoints.
+         * we try to progress the transfer at the head of each endpoint's
+         * queue until it completes or NAKs too much; then we try the next
+         * endpoint.
+         */
+        struct musb_hw_ep *bulk_ep;
 
-	struct list_head control;	/* of musb_qh */
-	struct list_head in_bulk;	/* of musb_qh */
-	struct list_head out_bulk;	/* of musb_qh */
+        struct list_head control;	/* of musb_qh */
+        struct list_head in_bulk;	/* of musb_qh */
+        struct list_head out_bulk;	/* of musb_qh */
 
-	struct timer_list otg_timer;
-	struct notifier_block nb;
+        struct timer_list otg_timer;
+        struct notifier_block nb;
 
-	struct dma_controller *dma_controller;
+        struct dma_controller *dma_controller;
 
-	struct device *controller;
-	void __iomem *ctrl_base;
-	void __iomem *mregs;
+        struct device *controller;
+        void __iomem *ctrl_base;
+        void __iomem *mregs;
 
 #if defined(CONFIG_USB_MUSB_TUSB6010) || \
-	defined(CONFIG_USB_MUSB_TUSB6010_MODULE)
-	dma_addr_t async;
-	dma_addr_t sync;
-	void __iomem *sync_va;
+        defined(CONFIG_USB_MUSB_TUSB6010_MODULE)
+        dma_addr_t async;
+        dma_addr_t sync;
+        void __iomem *sync_va;
 #endif
 
-	/* passed down from chip/board specific irq handlers */
-	u32 int_usb;
-	u16 int_rx;
-	u16 int_tx;
+        /* passed down from chip/board specific irq handlers */
+        u32 int_usb;
+        u16 int_rx;
+        u16 int_tx;
 
-	struct usb_phy *xceiv;
+        struct usb_phy *xceiv;
 
-	int nIrq;
-	unsigned irq_wake:1;
+        int nIrq;
+        unsigned irq_wake:1;
 
-	struct musb_hw_ep endpoints[MUSB_C_NUM_EPS];
+        struct musb_hw_ep endpoints[MUSB_C_NUM_EPS];
 #define control_ep		endpoints
 
 #define VBUSERR_RETRY_COUNT	3
-	u16 vbuserr_retry;
-	u16 epmask;
-	u8 nr_endpoints;
+        u16 vbuserr_retry;
+        u16 epmask;
+        u8 nr_endpoints;
 
-	u8 board_mode;		/* enum musb_mode */
-	int (*board_set_power)(int state);
+        u8 board_mode;		/* enum musb_mode */
+        int (*board_set_power)(int state);
 
-	u8 min_power;		/* vbus for periph, in mA/2 */
+        u8 min_power;		/* vbus for periph, in mA/2 */
 
-	bool is_host;
+        bool is_host;
 
-	int a_wait_bcon;	/* VBUS timeout in msecs */
-	unsigned long idle_timeout;	/* Next timeout in jiffies */
+        int a_wait_bcon;	/* VBUS timeout in msecs */
+        unsigned long idle_timeout;	/* Next timeout in jiffies */
 
-	/* active means connected and not suspended */
-	unsigned is_active:1;
+        /* active means connected and not suspended */
+        unsigned is_active:1;
 
-	unsigned is_multipoint:1;
-	unsigned ignore_disconnect:1;	/* during bus resets */
+        unsigned is_multipoint:1;
+        unsigned ignore_disconnect:1;	/* during bus resets */
 
-	unsigned hb_iso_rx:1;	/* high bandwidth iso rx? */
-	unsigned hb_iso_tx:1;	/* high bandwidth iso tx? */
-	unsigned dyn_fifo:1;	/* dynamic FIFO supported? */
+        unsigned hb_iso_rx:1;	/* high bandwidth iso rx? */
+        unsigned hb_iso_tx:1;	/* high bandwidth iso tx? */
+        unsigned dyn_fifo:1;	/* dynamic FIFO supported? */
 
-	unsigned bulk_split:1;
+        unsigned bulk_split:1;
 #define	can_bulk_split(musb, type) \
-	(((type) == USB_ENDPOINT_XFER_BULK) && (musb)->bulk_split)
+        (((type) == USB_ENDPOINT_XFER_BULK) && (musb)->bulk_split)
 
-	unsigned bulk_combine:1;
+        unsigned bulk_combine:1;
 #define	can_bulk_combine(musb, type) \
-	(((type) == USB_ENDPOINT_XFER_BULK) && (musb)->bulk_combine)
+        (((type) == USB_ENDPOINT_XFER_BULK) && (musb)->bulk_combine)
 
-	/* is_suspended means USB B_PERIPHERAL suspend */
-	unsigned is_suspended:1;
+        /* is_suspended means USB B_PERIPHERAL suspend */
+        unsigned is_suspended:1;
 
-	/* may_wakeup means remote wakeup is enabled */
-	unsigned may_wakeup:1;
+        /* may_wakeup means remote wakeup is enabled */
+        unsigned may_wakeup:1;
 
-	/* is_self_powered is reported in device status and the
-	 * config descriptor.  is_bus_powered means B_PERIPHERAL
-	 * draws some VBUS current; both can be true.
-	 */
-	unsigned is_self_powered:1;
-	unsigned is_bus_powered:1;
+        /* is_self_powered is reported in device status and the
+         * config descriptor.  is_bus_powered means B_PERIPHERAL
+         * draws some VBUS current; both can be true.
+         */
+        unsigned is_self_powered:1;
+        unsigned is_bus_powered:1;
 
-	unsigned set_address:1;
-	unsigned test_mode:1;
-	unsigned softconnect:1;
+        unsigned set_address:1;
+        unsigned test_mode:1;
+        unsigned softconnect:1;
 
-	u8 address;
-	u8 test_mode_nr;
-	bool in_ipo_off;
-	u32 ackpend;		/* ep0 *//*We don't maintain Max Packet size in it. */
-	enum musb_g_ep0_state ep0_state;
-	struct usb_gadget g;	/* the gadget */
-	struct usb_gadget_driver *gadget_driver;	/* its driver */
+        u8 address;
+        u8 test_mode_nr;
+        bool in_ipo_off;
+        u32 ackpend;		/* ep0 *//*We don't maintain Max Packet size in it. */
+        enum musb_g_ep0_state ep0_state;
+        struct usb_gadget g;	/* the gadget */
+        struct usb_gadget_driver *gadget_driver;	/* its driver */
 
-	/*
-	 * FIXME: Remove this flag.
-	 *
-	 * This is only added to allow Blackfin to work
-	 * with current driver. For some unknown reason
-	 * Blackfin doesn't work with double buffering
-	 * and that's enabled by default.
-	 *
-	 * We added this flag to forcefully disable double
-	 * buffering until we get it working.
-	 */
-	unsigned double_buffer_not_ok:1;
+        /*
+         * FIXME: Remove this flag.
+         *
+         * This is only added to allow Blackfin to work
+         * with current driver. For some unknown reason
+         * Blackfin doesn't work with double buffering
+         * and that's enabled by default.
+         *
+         * We added this flag to forcefully disable double
+         * buffering until we get it working.
+         */
+        unsigned double_buffer_not_ok:1;
 
-	struct musb_hdrc_config *config;
+        struct musb_hdrc_config *config;
 
 #ifdef MUSB_CONFIG_PROC_FS
-	struct proc_dir_entry *proc_entry;
+        struct proc_dir_entry *proc_entry;
 #endif
 
-	u32 txfifoadd_offset;
-	u32 rxfifoadd_offset;
+        u32 txfifoadd_offset;
+        u32 rxfifoadd_offset;
 #ifdef CONFIG_DEBUG_FS
-	struct dentry *debugfs_root;
+        struct dentry *debugfs_root;
 #endif
 
-	unsigned is_clk_on;
-	unsigned usb_mode;
-	unsigned active_ep;
-	CHARGER_TYPE charger_mode;
-	struct work_struct suspend_work;
-	struct wakeup_source usb_wakelock;
-	struct delayed_work connection_work;
-	struct delayed_work check_ltssm_work;
+        unsigned is_clk_on;
+        unsigned usb_mode;
+        unsigned active_ep;
+        CHARGER_TYPE charger_mode;
+        struct work_struct suspend_work;
+        struct wakeup_source usb_wakelock;
+        struct delayed_work connection_work;
+        struct delayed_work check_ltssm_work;
 #ifndef CONFIG_USBIF_COMPLIANCE
-	struct delayed_work reconnect_work;
+        struct delayed_work reconnect_work;
 #endif
 #ifdef EP_PROFILING
-	struct delayed_work ep_prof_work;
+        struct delayed_work ep_prof_work;
 #endif
 
 #ifdef USE_SSUSB_QMU
-	struct tasklet_struct qmu_done;
-	u32 qmu_done_intr;
+        struct tasklet_struct qmu_done;
+        u32 qmu_done_intr;
 
-	struct tasklet_struct error_recovery;
-	u32 error_wQmuVal;
-	u32 error_wErrVal;
+        struct tasklet_struct error_recovery;
+        u32 error_wQmuVal;
+        u32 error_wErrVal;
 #endif
 };
 
 static inline struct musb *gadget_to_musb(struct usb_gadget *g)
 {
-	return container_of(g, struct musb, g);
+        return container_of(g, struct musb, g);
 }
 
 #ifdef CONFIG_BLACKFIN
 static inline int musb_read_fifosize(struct musb *musb, struct musb_hw_ep *hw_ep, u8 epnum)
 {
-	musb->nr_endpoints++;
-	musb->epmask |= (1 << epnum);
+        musb->nr_endpoints++;
+        musb->epmask |= (1 << epnum);
 
-	if (epnum < 5) {
-		hw_ep->max_packet_sz_tx = 128;
-		hw_ep->max_packet_sz_rx = 128;
-	} else {
-		hw_ep->max_packet_sz_tx = 1024;
-		hw_ep->max_packet_sz_rx = 1024;
-	}
-	hw_ep->is_shared_fifo = false;
+        if (epnum < 5) {
+                hw_ep->max_packet_sz_tx = 128;
+                hw_ep->max_packet_sz_rx = 128;
+        } else {
+                hw_ep->max_packet_sz_tx = 1024;
+                hw_ep->max_packet_sz_rx = 1024;
+        }
+        hw_ep->is_shared_fifo = false;
 
-	return 0;
+        return 0;
 }
 
 static inline void musb_configure_ep0(struct musb *musb)
 {
-	musb->endpoints[0].max_packet_sz_tx = MUSB_EP0_FIFOSIZE;
-	musb->endpoints[0].max_packet_sz_rx = MUSB_EP0_FIFOSIZE;
-	musb->endpoints[0].is_shared_fifo = true;
+        musb->endpoints[0].max_packet_sz_tx = MUSB_EP0_FIFOSIZE;
+        musb->endpoints[0].max_packet_sz_rx = MUSB_EP0_FIFOSIZE;
+        musb->endpoints[0].is_shared_fifo = true;
 }
 
 #else
 
 static inline int musb_read_fifosize(struct musb *musb, struct musb_hw_ep *hw_ep, u8 epnum)
 {
-	void __iomem *mbase = musb->mregs;
-	u8 reg = 0;
+        void __iomem *mbase = musb->mregs;
+        u8 reg = 0;
 
-	/* read from core using indexed model */
-	reg = musb_readb(mbase, MUSB_EP_OFFSET(epnum, MUSB_FIFOSIZE));
-	/* 0's returned when no more endpoints */
-	if (!reg)
-		return -ENODEV;
+        /* read from core using indexed model */
+        reg = musb_readb(mbase, MUSB_EP_OFFSET(epnum, MUSB_FIFOSIZE));
+        /* 0's returned when no more endpoints */
+        if (!reg)
+                return -ENODEV;
 
-	musb->nr_endpoints++;
-	musb->epmask |= (1 << epnum);
+        musb->nr_endpoints++;
+        musb->epmask |= (1 << epnum);
 
-	hw_ep->max_packet_sz_tx = 1 << (reg & 0x0f);
+        hw_ep->max_packet_sz_tx = 1 << (reg & 0x0f);
 
-	/* shared TX/RX FIFO? */
-	if ((reg & 0xf0) == 0xf0) {
-		hw_ep->max_packet_sz_rx = hw_ep->max_packet_sz_tx;
-		hw_ep->is_shared_fifo = true;
-	} else {
-		hw_ep->max_packet_sz_rx = 1 << ((reg & 0xf0) >> 4);
-		hw_ep->is_shared_fifo = false;
-	}
+        /* shared TX/RX FIFO? */
+        if ((reg & 0xf0) == 0xf0) {
+                hw_ep->max_packet_sz_rx = hw_ep->max_packet_sz_tx;
+                hw_ep->is_shared_fifo = true;
+        } else {
+                hw_ep->max_packet_sz_rx = 1 << ((reg & 0xf0) >> 4);
+                hw_ep->is_shared_fifo = false;
+        }
 
-	return 0;
+        return 0;
 }
 
 static inline void musb_configure_ep0(struct musb *musb)
 {
-	musb->endpoints[0].max_packet_sz_tx = MUSB_EP0_FIFOSIZE;
-	musb->endpoints[0].max_packet_sz_rx = MUSB_EP0_FIFOSIZE;
-	musb->endpoints[0].is_shared_fifo = true;
+        musb->endpoints[0].max_packet_sz_tx = MUSB_EP0_FIFOSIZE;
+        musb->endpoints[0].max_packet_sz_rx = MUSB_EP0_FIFOSIZE;
+        musb->endpoints[0].is_shared_fifo = true;
 }
 #endif				/* CONFIG_BLACKFIN */
 
@@ -707,6 +707,8 @@ extern void musb_stop(struct musb *musb);
 extern void forge_usb_queue_suspend_work(struct musb *musb);
 extern int forge_usb_suspend_guard;
 extern unsigned int forge_usb_suspend_saves;
+/* FORGE m681: stock cable-out + cable-in cycle in one call (VBUS rising edge). */
+extern void forge_usb_vbus_reinit(struct musb *musb);
 
 extern void musb_write_fifo(struct musb_hw_ep *ep, u16 len, const u8 *src);
 extern void musb_read_fifo(struct musb_hw_ep *ep, u16 len, u8 *dst);
@@ -719,58 +721,58 @@ extern void musb_hnp_stop(struct musb *musb);
 
 static inline void musb_platform_set_vbus(struct musb *musb, int is_on)
 {
-	if (musb->ops->set_vbus)
-		musb->ops->set_vbus(musb, is_on);
+        if (musb->ops->set_vbus)
+                musb->ops->set_vbus(musb, is_on);
 }
 
 static inline void musb_platform_enable(struct musb *musb)
 {
-	if (musb->ops->enable)
-		musb->ops->enable(musb);
+        if (musb->ops->enable)
+                musb->ops->enable(musb);
 }
 
 static inline void musb_platform_disable(struct musb *musb)
 {
-	if (musb->ops->disable)
-		musb->ops->disable(musb);
+        if (musb->ops->disable)
+                musb->ops->disable(musb);
 }
 
 static inline int musb_platform_set_mode(struct musb *musb, u8 mode)
 {
-	if (!musb->ops->set_mode)
-		return 0;
+        if (!musb->ops->set_mode)
+                return 0;
 
-	return musb->ops->set_mode(musb, mode);
+        return musb->ops->set_mode(musb, mode);
 }
 
 static inline void musb_platform_try_idle(struct musb *musb, unsigned long timeout)
 {
-	if (musb->ops->try_idle)
-		musb->ops->try_idle(musb, timeout);
+        if (musb->ops->try_idle)
+                musb->ops->try_idle(musb, timeout);
 }
 
 static inline int musb_platform_get_vbus_status(struct musb *musb)
 {
-	if (!musb->ops->vbus_status)
-		return 0;
+        if (!musb->ops->vbus_status)
+                return 0;
 
-	return musb->ops->vbus_status(musb);
+        return musb->ops->vbus_status(musb);
 }
 
 static inline int musb_platform_init(struct musb *musb)
 {
-	if (!musb->ops->init)
-		return -EINVAL;
+        if (!musb->ops->init)
+                return -EINVAL;
 
-	return musb->ops->init(musb);
+        return musb->ops->init(musb);
 }
 
 static inline int musb_platform_exit(struct musb *musb)
 {
-	if (!musb->ops->exit)
-		return -EINVAL;
+        if (!musb->ops->exit)
+                return -EINVAL;
 
-	return musb->ops->exit(musb);
+        return musb->ops->exit(musb);
 }
 
 extern bool usb_cable_connected(void);
@@ -791,9 +793,9 @@ extern void Charger_Detect_En(bool enable);
 
 #ifdef CONFIG_MTK_SIB_USB_SWITCH
 extern ssize_t musb_sib_enable_show(struct device *dev,
-				struct device_attribute *attr, char *buf);
+                                struct device_attribute *attr, char *buf);
 extern ssize_t musb_sib_enable_store(struct device *dev,
-				struct device_attribute *attr, const char *buf, size_t count);
+                                struct device_attribute *attr, const char *buf, size_t count);
 #endif
 
 extern void musb_sync_with_bat(struct musb *musb, int usb_state);
@@ -803,10 +805,10 @@ extern void musb_sync_with_bat(struct musb *musb, int usb_state);
 extern bool in_uart_mode;
 extern ssize_t musb_portmode_show(struct device *dev, struct device_attribute *attr, char *buf);
 extern ssize_t musb_portmode_store(struct device *dev, struct device_attribute *attr,
-				   const char *buf, size_t count);
+                                   const char *buf, size_t count);
 extern ssize_t musb_tx_show(struct device *dev, struct device_attribute *attr, char *buf);
 extern ssize_t musb_tx_store(struct device *dev, struct device_attribute *attr, const char *buf,
-			     size_t count);
+                             size_t count);
 extern ssize_t musb_rx_show(struct device *dev, struct device_attribute *attr, char *buf);
 extern ssize_t musb_uart_path_show(struct device *dev, struct device_attribute *attr, char *buf);
 extern bool usb_phy_check_in_uart_mode(void);
@@ -816,7 +818,7 @@ extern void usb_phy_switch_to_uart(void);
 
 extern ssize_t musb_cmode_show(struct device *dev, struct device_attribute *attr, char *buf);
 extern ssize_t musb_cmode_store(struct device *dev, struct device_attribute *attr, const char *buf,
-				size_t count);
+                                size_t count);
 
 extern void usb20_pll_settings(bool host, bool forceOn);
 
@@ -831,7 +833,7 @@ extern void mtk_disable_host(void);
 #else
 static inline int mtk_is_host_mode(void)
 {
-	return 0;
+        return 0;
 }
 #endif
 #ifdef CONFIG_USB_C_SWITCH
