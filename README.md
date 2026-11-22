@@ -34,8 +34,12 @@ claim that hardware is broken or absent.
 - Configuration: [`arch/arm64/configs/m5s_yassy_defconfig`](arch/arm64/configs/m5s_yassy_defconfig).
 - Compiler: [AOSP AArch64 GCC 4.9](https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+/7a28c220c2e9001825328dca6188ef0077a80a88), pinned to `7a28c220c2e9001825328dca6188ef0077a80a88`.
   The accepted modern-host setup changes only the `gcc`/`g++` wrapper shebangs to Python 3.
-- Kernel build targets checked so far: `vmlinux` and `Image.gz`. The appended-DTB
-  target still needs the correct board-generation inputs; `Image.gz` alone is not a boot image.
+- Kernel build targets checked so far: `vmlinux`, `Image.gz` and the default
+  `Image.gz-dtb`. The DTB step runs DrvGen (`tools/dct`, needs `python2` and 32-bit
+  x86 execution) on `drivers/misc/mediatek/dws/mt6735/k37mv1_bsp_k49.dws`.
+- That workspace and `k37mv1_bsp_k49.dts` are the MediaTek reference board
+  (`model = "MT6735M"`), not the M5s, so the appended DTB proves only that the
+  target links; it is not an M5s DTB and the result is not a boot image.
 - [ReMeizu build infrastructure](https://github.com/ReMeizu/build-infra) provides
   the Forge-based `kernel` job. Its current M5s recipe compiles the Yassy object,
   not a complete boot image.

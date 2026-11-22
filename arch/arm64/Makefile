@@ -146,7 +146,9 @@ endif
 
 boot := arch/arm64/boot
 
-Image: vmlinux
+# $(boot)/Image also builds mtk.dtb, so the DrvGen output the board dts
+# includes has to exist first, as it does for the %.dtb and dtbs targets.
+Image: vmlinux $(DRVGEN_FILE_LIST)
 	$(Q)$(MAKE) $(build)=$(boot) $(boot)/$@
 
 Image.%: Image
