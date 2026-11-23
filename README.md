@@ -6,9 +6,10 @@ changes on a MediaTek 4.9 base. It uses the BSP's `mt6735` platform code with
 `CONFIG_MACH_MT6753_M5S=y`; that shared platform name does not make board resources
 interchangeable with M5c or other MT6735-family phones.
 
-**Current milestone:** `vmlinux` and `Image.gz` compiled; the Yassy, MSDC and DDP
-changes were checked in the resulting objects and linked kernel. **No M5s DTB,
-boot image or hardware boot has been accepted from this branch.**
+**Current milestone:** `Image.gz-dtb` builds from source with the phone's own
+board DTB appended (`arch/arm64/boot/dts/mediatek/m5s_stock.dts`); the Yassy, MSDC
+and DDP changes were checked in the resulting objects and linked kernel. **No
+hardware boot has been accepted from this branch.**
 
 ## Hardware and source map
 
@@ -35,11 +36,20 @@ claim that hardware is broken or absent.
 - Compiler: [AOSP AArch64 GCC 4.9](https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+/7a28c220c2e9001825328dca6188ef0077a80a88), pinned to `7a28c220c2e9001825328dca6188ef0077a80a88`.
   The accepted modern-host setup changes only the `gcc`/`g++` wrapper shebangs to Python 3.
 - Kernel build targets checked so far: `vmlinux`, `Image.gz` and the default
-  `Image.gz-dtb`. The DTB step runs DrvGen (`tools/dct`, needs `python2` and 32-bit
-  x86 execution) on `drivers/misc/mediatek/dws/mt6735/k37mv1_bsp_k49.dws`.
-- That workspace and `k37mv1_bsp_k49.dts` are the MediaTek reference board
-  (`model = "MT6735M"`), not the M5s, so the appended DTB proves only that the
-  target links; it is not an M5s DTB and the result is not a boot image.
+  `Image.gz-dtb`, for `m5s_defconfig` and `m5s_yassy_defconfig`.
+- Both configurations append `mediatek/m5s_stock`. That DTS is the stock M1612 DTB
+  decompiled with numeric phandles; `scripts/dtc/dtc_overlay` rebuilds the stock
+  bytes from it (67170 bytes, SHA256
+  `a980f28052cdd11bc8bb523e468a1e2d6e0e13ba2b9fa7dbedeef9554de4252d`), the DTB the
+  device tree's `tools/check_appended_dtb.sh` expects. It needs no DrvGen step.
+- `k37mv1_bsp_k49.dts` and its `.dws` are the MediaTek reference board
+  (`model = "MT6735M"`), not the M5s. They are no longer built for
+  `CONFIG_MACH_MT6753_M5S`; a configuration that appends them runs DrvGen
+  (`tools/dct`, needs `python2` and 32-bit x86 execution).
+- Driver bindings this kernel looks up that the stock DTB does not carry:
+  `mediatek,sys_cirq` (stock has `mediatek,mt6735-sys_cirq`), `mediatek,VENC`,
+  `mediatek,mt6735-mcu_biu`, `mediatek,mt67xx-rng`, `mediatek,atf_logger`,
+  `mediatek,spm-reserve-memory`. Those drivers find no node on this board.
 - [ReMeizu build infrastructure](https://github.com/ReMeizu/build-infra) provides
   the Forge-based `kernel` job. Its current M5s recipe compiles the Yassy object,
   not a complete boot image.
@@ -52,8 +62,8 @@ Subsequent Goodix selector experiments are separate work and are not included in
 
 ## Next steps
 
-Complete the M5s DTS/DCT and touch selection, validate power and display clocks,
-then package and test a board-specific boot image. The accepted configuration
+Complete the touch selection, validate power and display clocks against the stock
+DTB, then package and test a board-specific boot image. The accepted configuration
 still contains inherited `LCM_WIDTH=1080` / `LCM_HEIGHT=1920`; review that geometry
 against the 720×1280 Yassy driver before display bring-up. Camera, audio and
 remaining board peripherals need their own integration and tests.
